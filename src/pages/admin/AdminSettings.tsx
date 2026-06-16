@@ -262,6 +262,81 @@ export function AdminSettings() {
               </div>
             </div>
 
+            {/* ── Datos de facturación (factura / legal) ── */}
+            <div className="rounded-2xl border-2 border-slate-300 bg-slate-50/80 p-5 space-y-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-slate-700 flex items-center justify-center shrink-0">
+                  <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-bold text-slate-900">
+                    {locale === 'es' ? 'Datos de facturación (factura / legal)' : 'Invoice details (legal)'}
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {locale === 'es'
+                      ? 'Estos datos aparecen en el encabezado de las facturas que generas desde Registro de Ventas. Los datos del cliente se toman de cada compra.'
+                      : 'These appear in the header of invoices generated from the Sales log. Customer data is taken from each purchase.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">{locale === 'es' ? 'Nombre de la empresa' : 'Company name'}</label>
+                  <Input value={settings.invoiceCompanyName || ''} onChange={(e) => setSettings({ ...settings, invoiceCompanyName: e.target.value })} placeholder="ILLIUM Health LLC" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">{locale === 'es' ? 'NIF / Tax ID / RUC' : 'Tax ID'}</label>
+                  <Input value={settings.invoiceTaxId || ''} onChange={(e) => setSettings({ ...settings, invoiceTaxId: e.target.value })} placeholder="EIN / NIF / RUC" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Email</label>
+                  <Input value={settings.invoiceEmail || ''} onChange={(e) => setSettings({ ...settings, invoiceEmail: e.target.value })} placeholder="facturacion@alliumhealth.net" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">{locale === 'es' ? 'Teléfono' : 'Phone'}</label>
+                  <Input value={settings.invoicePhone || ''} onChange={(e) => setSettings({ ...settings, invoicePhone: e.target.value })} placeholder="+1 ..." />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">{locale === 'es' ? 'Página web' : 'Website'}</label>
+                  <Input value={settings.invoiceWebsite || ''} onChange={(e) => setSettings({ ...settings, invoiceWebsite: e.target.value })} placeholder="alliumhealth.net" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">{locale === 'es' ? 'URL del logo' : 'Logo URL'}</label>
+                  <Input value={settings.invoiceLogoUrl || ''} onChange={(e) => setSettings({ ...settings, invoiceLogoUrl: e.target.value })} placeholder="https://...logo.png" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">{locale === 'es' ? 'Dirección' : 'Address'}</label>
+                  <Input value={settings.invoiceAddress || ''} onChange={(e) => setSettings({ ...settings, invoiceAddress: e.target.value })} placeholder={locale === 'es' ? 'Calle, ciudad, país' : 'Street, city, country'} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">{locale === 'es' ? 'Moneda' : 'Currency'}</label>
+                  <Input value={settings.invoiceCurrency || ''} onChange={(e) => setSettings({ ...settings, invoiceCurrency: e.target.value })} placeholder="USD" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">{locale === 'es' ? 'Impuesto / IVA (%)' : 'Tax / VAT (%)'}</label>
+                  <Input type="number" min={0} step="any" value={settings.invoiceTaxRate ?? ''} onChange={(e) => setSettings({ ...settings, invoiceTaxRate: e.target.value === '' ? 0 : parseFloat(e.target.value) })} placeholder="0" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">{locale === 'es' ? 'Prefijo de factura' : 'Invoice prefix'}</label>
+                  <Input value={settings.invoicePrefix || ''} onChange={(e) => setSettings({ ...settings, invoicePrefix: e.target.value })} placeholder="ILL-" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">{locale === 'es' ? 'Datos bancarios (pie)' : 'Bank details (footer)'}</label>
+                  <Input value={settings.invoiceBank || ''} onChange={(e) => setSettings({ ...settings, invoiceBank: e.target.value })} placeholder={locale === 'es' ? 'Banco · IBAN/Cuenta' : 'Bank · IBAN/Account'} />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 mb-1 block">{locale === 'es' ? 'Términos y condiciones' : 'Terms & conditions'}</label>
+                <textarea
+                  className="w-full border border-slate-200 rounded-md p-2.5 text-sm min-h-[70px] outline-none focus:ring-2 focus:ring-brand-500"
+                  value={settings.invoiceTerms || ''}
+                  onChange={(e) => setSettings({ ...settings, invoiceTerms: e.target.value })}
+                  placeholder={locale === 'es' ? 'Ej: Pago contra entrega. Gracias por tu compra.' : 'E.g. Payment on delivery. Thank you for your purchase.'}
+                />
+              </div>
+            </div>
+
             <div id="wholesale-section" className="rounded-2xl border-2 border-blue-300 bg-blue-50/80 p-5 space-y-3 shadow-sm">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">

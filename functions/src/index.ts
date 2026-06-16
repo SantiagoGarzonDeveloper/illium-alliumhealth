@@ -660,6 +660,38 @@ async function sendEmailViaResend(
   return { ok: true, id: (data as { id?: string }).id };
 }
 
+/**
+ * Send an invoice to a customer by email (admin-only). The client renders the
+ * invoice HTML (single source of truth in InvoiceModal) and passes it here.
+ */
+export const sendInvoiceEmail = onCall(
+  { region: 'us-central1', cors: true, secrets: [RESEND_API_KEY] },
+  async (request) => {
+    await assertRequestIsAdmin(request.auth);
+    const { to, subject, html } = (request.data || {}) as { to?: string; subject?: string; html?: string };
+    const cleanTo = (to || '').trim();
+    if (!cleanTo || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanTo)) {
+      throw new HttpsError('invalid-argument', 'A valid recipient email is required.');
+    }
+    if (!html || html.length < 20) {
+      throw new HttpsError('invalid-argument', 'Invoice HTML is required.');
+    }
+    const apiKey = RESEND_API_KEY.value();
+    if (!apiKey || apiKey === 'placeholder-get-one-at-resend.com') {
+      throw new HttpsError('failed-precondition', 'Email service is not configured.');
+    }
+    const r = await sendEmailViaResend(apiKey, {
+      to: cleanTo,
+      subject: (subject || 'Invoice').slice(0, 200),
+      html,
+    });
+    if (!r.ok) {
+      throw new HttpsError('internal', r.error || 'Email send failed.');
+    }
+    return { sent: true, id: r.id };
+  },
+);
+
 function orderConfirmationHtml(order: Record<string, unknown>, orderId: string, locale: string): string {
   const es = locale === 'es';
   const cust = (order.customer || {}) as Record<string, string>;

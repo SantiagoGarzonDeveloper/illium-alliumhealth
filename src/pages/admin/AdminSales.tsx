@@ -15,9 +15,10 @@ import { getEffectivePrice } from '@/lib/pricing';
 import {
   Plus, Trash2, DollarSign, TrendingUp, ShoppingBag, Users,
   Calendar, Filter, Download, Search, ArrowUpRight, ArrowDownRight,
-  Receipt, Tag, Clock, ChevronDown, Sparkles,
+  Receipt, Tag, Clock, ChevronDown, Sparkles, FileText,
 } from 'lucide-react';
 import { OrderProtocolModal } from '@/components/orders/OrderProtocolModal';
+import { InvoiceModal, type InvoiceSale } from '@/components/invoices/InvoiceModal';
 import { findCouponByCode, validateCoupon, applyCouponToTotal, incrementCouponUsage, type Coupon } from '@/lib/coupons';
 
 type SaleRecord = {
@@ -75,6 +76,7 @@ export function AdminSales() {
   const [saving, setSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [protocolOrder, setProtocolOrder] = useState<OrderDoc | null>(null);
+  const [invoiceSale, setInvoiceSale] = useState<InvoiceSale | null>(null);
   const [editManualId, setEditManualId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -766,6 +768,29 @@ export function AdminSales() {
 
                     {/* Action bar: own row, wraps on mobile so nothing gets clipped */}
                     <div className="flex flex-wrap items-center gap-2 mt-3 sm:pl-[52px]">
+                      {/* Invoice — available for every sale (web order or manual). */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setInvoiceSale({
+                          id: sale.id,
+                          customerName: sale.customerName,
+                          customerEmail: sale.customerEmail,
+                          items: sale.items.map((i) => ({
+                            productName: i.productName,
+                            quantity: i.quantity,
+                            unitPrice: i.unitPrice,
+                          })),
+                          total: sale.total,
+                          createdAt: sale.createdAt,
+                          channel: sale.channel,
+                        })}
+                        className="text-slate-700 border-slate-300 hover:bg-slate-50 h-9 px-3 text-xs font-bold"
+                        title={es ? 'Ver / enviar factura' : 'View / send invoice'}
+                      >
+                        <FileText className="h-3.5 w-3.5 mr-1.5" />
+                        {es ? 'Factura' : 'Invoice'}
+                      </Button>
                       {sale.channel === 'online' && (() => {
                         const oid = sale.id.replace(/^order-/, '');
                         const ord = orders.find((o) => o.id === oid);
@@ -830,6 +855,13 @@ export function AdminSales() {
           order={protocolOrder}
         />
       )}
+
+      {/* ── Invoice modal ── */}
+      <InvoiceModal
+        open={!!invoiceSale}
+        onClose={() => setInvoiceSale(null)}
+        sale={invoiceSale}
+      />
 
       {/* ── Edit Manual Sale modal ── */}
       {editManualId && (() => {

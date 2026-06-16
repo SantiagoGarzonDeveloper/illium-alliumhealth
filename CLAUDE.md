@@ -197,6 +197,25 @@ Al generar el protocolo de un pedido, la IA recibe **por cada producto** (de Fir
 
 ## 10. Historial de cambios recientes
 
+### 2026-06-16 (hash `index-DdE50NeP.js`) — Sistema de FACTURAS
+- **Nuevo:** botón **"Factura"** en cada venta de **Registro de Ventas** (`AdminSales.tsx`,
+  sirve para órdenes web y ventas manuales) → abre `InvoiceModal`
+  (`src/components/invoices/InvoiceModal.tsx`).
+- El modal: **ver** la factura (preview), **Imprimir / Guardar PDF** (abre ventana de
+  impresión → "Guardar como PDF") y **Enviar al cliente** por correo.
+- `buildInvoiceHtml()` genera el HTML de la factura (inline styles, email-safe) y es
+  la ÚNICA fuente para preview + impresión + email. Datos del cliente salen de la venta;
+  número de factura = `prefix + últimos 6 del id`.
+- **Datos de la empresa configurables** en **Ajustes** (`AdminSettings.tsx`, sección
+  "Datos de facturación") → se guardan en `settings/general`: `invoiceCompanyName`,
+  `invoiceLogoUrl`, `invoiceAddress`, `invoiceTaxId`, `invoiceEmail`, `invoicePhone`,
+  `invoiceWebsite`, `invoiceBank`, `invoiceTerms`, `invoiceCurrency` (def. USD),
+  `invoiceTaxRate` (PORCENTAJE, ej. 21; el modal lo divide /100), `invoicePrefix` (def. ILL-).
+- **Backend:** nueva callable **`sendInvoiceEmail`** (`functions/src/index.ts`, admin-only
+  vía `assertRequestIsAdmin`, usa `sendEmailViaResend` + secret `RESEND_API_KEY`). Recibe
+  `{to, subject, html}` del cliente y lo envía. Desplegada con
+  `firebase deploy --only functions:sendInvoiceEmail`.
+
 ### 2026-06-16 (hash `index-PNxO-N9q.js`) — Fidelidad estricta del protocolo IA
 - **Problema:** el generador inventaba/derivaba cifras no provistas (dosis como
   0.5mg, conversiones a mL "0.25mg=0.025mL", calibre de jeringa, incrementos de
