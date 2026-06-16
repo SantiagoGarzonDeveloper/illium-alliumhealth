@@ -11,7 +11,10 @@ export function getGroqApiKey(): string {
   return (import.meta.env.VITE_GROQ_API_KEY as string | undefined)?.trim() || '';
 }
 
-export async function groqChatCompletion(messages: { role: string; content: string }[]): Promise<string> {
+export async function groqChatCompletion(
+  messages: { role: string; content: string }[],
+  opts?: { temperature?: number },
+): Promise<string> {
   const key = getGroqApiKey();
   if (!key) {
     throw new Error('Groq API key is not configured.');
@@ -24,7 +27,13 @@ export async function groqChatCompletion(messages: { role: string; content: stri
         Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ model, messages }),
+      body: JSON.stringify({
+        model,
+        messages,
+        // Low temperature for deterministic, faithful output (protocols must NOT
+        // invent or approximate numbers). Defaults to the model's standard when omitted.
+        ...(typeof opts?.temperature === 'number' ? { temperature: opts.temperature } : {}),
+      }),
     });
 
   let res = await fetchModel(PRIMARY_MODEL);
