@@ -104,6 +104,25 @@ protocolos con IA están en **[`CLAUDE.md`](./CLAUDE.md)** y en `ILLIUM_DOCUMENT
 
 ---
 
+## 🗄️ Cambiar la base de datos, reglas o funciones (Firebase)
+
+Todo lo de Firebase ya está en el repo (`firestore.rules`, `storage.rules`,
+`firebase.json`). Para aplicar cambios:
+```bash
+firebase login        # solo la primera vez — inicia sesión con tu cuenta de Google
+firebase deploy --only firestore:rules --project monaco-community
+firebase deploy --only functions --project monaco-community   # para las Cloud Functions
+```
+> Tu cuenta de Google debe tener acceso al proyecto `monaco-community`. Santiago te lo
+> concede una vez desde la Consola de Firebase (Configuración → Usuarios y permisos).
+> **No necesitas ningún archivo de clave** para esto.
+
+> 🔒 **El "secreto" / clave de admin de Firebase NO va en el repositorio** (sería un
+> riesgo grave: da acceso total a la base de datos y cualquiera podría borrarla). Solo
+> hace falta para scripts internos de mantenimiento; Santiago lo comparte aparte de
+> forma privada. Para el día a día (cambios en la web, reglas y funciones) basta con
+> `firebase login`.
+
 ## 🔐 Notas de seguridad
 - Credenciales FTP, service accounts y archivos `.env` están excluidos del repo
   (`.gitignore`).

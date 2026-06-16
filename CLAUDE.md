@@ -96,6 +96,33 @@ cd functions && npm run build      # tsc → functions/lib/
 firebase deploy --only functions:NOMBRE --project monaco-community
 ```
 Node 20 (deprecado, decom 2026-10-30 — eventualmente subir runtime).
+⚠️ Usa **firebase-tools v15+** (`npm i -g firebase-tools@latest`). La v14 tiene un bug
+`Cannot read properties of undefined (reading 'runtime')` que rompe el deploy de funciones.
+
+### 4.3 Cambiar reglas de Firestore/Storage o la base de datos
+Los archivos ya están en el repo: `firestore.rules`, `storage.rules`, `firebase.json`,
+`.firebaserc`. Para aplicar cambios:
+```bash
+firebase login                                       # 1ª vez: inicia sesión con tu cuenta Google
+firebase deploy --only firestore:rules --project monaco-community
+firebase deploy --only storage --project monaco-community     # reglas de Storage
+```
+> Tu cuenta de Google debe tener acceso al proyecto Firebase `monaco-community`
+> (rol Editor/Owner). Esto se concede UNA vez desde la Consola de Firebase →
+> Configuración → Usuarios y permisos. **No se necesita ningún archivo de clave** para
+> esto: `firebase login` autentica como tu usuario.
+
+### 4.4 Service account (clave de admin) — NUNCA se sube al repo
+El JSON del service account (`*-adminsdk-*.json`) da acceso TOTAL a la base de datos.
+Por eso está en `.gitignore` y NO está en GitHub. Solo lo necesitan los **scripts de
+administración** (`scripts/*.mjs`: seeds, migraciones, lecturas masivas). Para usarlos:
+```bash
+export FIREBASE_SERVICE_ACCOUNT="/ruta/absoluta/a/serviceAccount.json"
+node scripts/seed-products-firestore.mjs
+```
+o coloca el JSON junto a `package.json` / carpeta padre (lo resuelve
+`scripts/resolve-firebase-credentials.mjs`). El archivo se comparte de forma privada
+(no por el repositorio).
 
 ---
 
