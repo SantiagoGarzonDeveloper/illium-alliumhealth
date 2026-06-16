@@ -1,0 +1,60 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+
+# FTP creds
+DEPLOY_FTP.md
+deploy-ftp.sh
+
+# Secrets / service accounts (never commit)
+*serviceAccount*.json
+*adminsdk*.json
+.env
+.env.*
+!.env.example
+functions/.env
+functions/.env.*
+
+# Large media + generated tutorial artifacts (rebuildable with scripts/build-tutorial-video.mjs)
+*.mp4
+*.mov
+*.wav
+*.webm
+.tutorial-build/
+scripts/tutorial/audio/
+scripts/tutorial/video-raw/
+
+# Firebase local
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# CI workflow (requiere scope workflow para subirse vía gh)
+.github/workflows/

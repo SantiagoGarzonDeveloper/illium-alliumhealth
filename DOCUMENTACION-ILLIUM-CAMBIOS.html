@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ILLIUM · Mejoras y guía de uso</title>
+<style>
+  :root{
+    --green-900:#052e16; --green-800:#14532d; --green-700:#15803d; --green-600:#16a34a;
+    --green-500:#22c55e; --green-100:#dcfce7; --green-50:#f0fdf4;
+    --ink:#0f172a; --slate-600:#475569; --slate-500:#64748b; --slate-400:#94a3b8;
+    --line:#e2e8f0; --bg:#f6f8f7; --amber-50:#fffbeb; --amber-300:#fcd34d; --amber-800:#92400e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:0 20px 80px}
+  /* Header */
+  header{background:linear-gradient(135deg,var(--green-900),var(--green-800) 55%,var(--green-900));
+    color:#fff;padding:54px 20px 60px;text-align:center;border-bottom:4px solid var(--green-500)}
+  .brand{font-family:Georgia,"Times New Roman",serif;font-weight:900;letter-spacing:.32em;
+    font-size:40px;margin:0}
+  .brand small{display:block;font-family:inherit;font-size:10px;letter-spacing:.34em;
+    color:#86efac;margin-top:8px;text-transform:uppercase}
+  header h1{font-size:23px;font-weight:800;margin:26px 0 6px}
+  header p{color:#bbf7d0;margin:0;font-size:14px}
+  .pill{display:inline-block;margin-top:18px;background:rgba(255,255,255,.12);
+    border:1px solid rgba(134,239,172,.4);color:#dcfce7;border-radius:999px;
+    padding:6px 16px;font-size:12px;font-weight:700;letter-spacing:.04em}
+  /* Cards / sections */
+  .card{background:#fff;border:1px solid var(--line);border-radius:18px;
+    padding:26px 28px;margin-top:22px;box-shadow:0 6px 24px rgba(15,23,42,.04)}
+  .intro{margin-top:-34px}
+  h2{font-size:19px;margin:0 0 4px;color:var(--green-800);display:flex;align-items:center;gap:10px}
+  h2 .num{flex:0 0 auto;width:30px;height:30px;border-radius:9px;background:var(--green-600);
+    color:#fff;font-size:14px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+  h3{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);
+    margin:22px 0 8px}
+  p{margin:10px 0}
+  ul,ol{margin:8px 0;padding-left:22px}
+  li{margin:6px 0}
+  a{color:var(--green-700)}
+  code,.path{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;background:var(--green-50);
+    border:1px solid var(--green-100);color:var(--green-800);border-radius:6px;padding:1px 7px;font-size:.88em}
+  .lede{font-size:16px;color:var(--slate-600)}
+  /* TOC */
+  .toc{list-style:none;padding:0;margin:14px 0 0}
+  .toc li{margin:0;border-bottom:1px dashed var(--line)}
+  .toc li:last-child{border-bottom:0}
+  .toc a{display:flex;gap:12px;padding:11px 4px;text-decoration:none;color:var(--ink);font-weight:600}
+  .toc a:hover{color:var(--green-700)}
+  .toc .n{color:var(--green-600);font-weight:800;width:22px}
+  /* Callouts */
+  .see{display:flex;gap:12px;align-items:flex-start;background:var(--green-50);
+    border:1px solid var(--green-100);border-left:4px solid var(--green-500);
+    border-radius:12px;padding:14px 16px;margin:16px 0;font-size:14px}
+  .see b{color:var(--green-800)}
+  .warn{display:flex;gap:12px;align-items:flex-start;background:var(--amber-50);
+    border:1px solid var(--amber-300);border-left:4px solid #f59e0b;border-radius:12px;
+    padding:14px 16px;margin:16px 0;font-size:14px;color:var(--amber-800)}
+  .ico{font-size:18px;line-height:1.4;flex:0 0 auto}
+  .badge{display:inline-block;background:var(--green-100);color:var(--green-800);border-radius:999px;
+    padding:3px 11px;font-size:11px;font-weight:800;letter-spacing:.03em;vertical-align:middle}
+  .tag-before{background:#fee2e2;color:#991b1b;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700}
+  .tag-after{background:var(--green-100);color:var(--green-800);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--green-50);color:var(--green-800);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+  .step{counter-reset:none}
+  .footer{text-align:center;color:var(--slate-400);font-size:13px;margin-top:40px;padding-top:24px;border-top:1px solid var(--line)}
+  .kicker{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--green-600);margin-bottom:6px}
+  @media print{body{background:#fff}.card{box-shadow:none;break-inside:avoid}header{padding:30px 20px}}
+</style>
+</head>
+<body>
+
+<header>
+  <p class="brand">ILLIUM<small>Advanced Research Peptides</small></p>
+  <h1>Resumen de mejoras y guía de uso de la plataforma</h1>
+  <p>alliumhealth.net · Portal de socios, checkout y comisiones</p>
+  <span class="pill">Actualizado: 4 de junio de 2026 · Cambios ya en línea</span>
+</header>
+
+<div class="wrap">
+
+  <section class="card intro">
+    <span class="kicker">Para el equipo y socios de ILLIUM</span>
+    <p class="lede">Este documento explica, en lenguaje claro, las mejoras que se acaban de aplicar
+    en la plataforma: cómo funcionan, cómo usarlas y dónde verlas. Todos los cambios ya están
+    publicados y funcionando en <b>alliumhealth.net</b>.</p>
+    <h3>Contenido</h3>
+    <ul class="toc">
+      <li><a href="#s1"><span class="n">1</span> Cobrar con tarjeta desde el portal del socio</a></li>
+      <li><a href="#s2"><span class="n">2</span> Comisiones: por porcentaje, por unidad o por producto</a></li>
+      <li><a href="#s3"><span class="n">3</span> Opción "Recoger en persona" (sin envío)</a></li>
+      <li><a href="#s4"><span class="n">4</span> Descuentos y cupones en las ventas del socio</a></li>
+      <li><a href="#s5"><span class="n">5</span> Pago con tarjeta limpio (sin Cash App ni Amazon Pay)</a></li>
+      <li><a href="#s6"><span class="n">6</span> Dónde ver todas las ventas y comisiones</a></li>
+      <li><a href="#s7"><span class="n">7</span> Cómo activar los pagos con tarjeta (Stripe)</a></li>
+      <li><a href="#s8"><span class="n">8</span> Cómo activar las notificaciones por WhatsApp</a></li>
+    </ul>
+  </section>
+
+  <!-- 1 -->
+  <section class="card" id="s1">
+    <h2><span class="num">1</span> Cobrar con tarjeta desde el portal del socio</h2>
+    <p><span class="tag-before">Antes</span> al registrar una venta y elegir "Tarjeta", solo aparecía
+    el botón pero <b>no había dónde poner los datos de la tarjeta</b>.</p>
+    <p><span class="tag-after">Ahora</span> el socio puede cobrar la tarjeta en el momento, de forma
+    segura con Stripe (Visa, Mastercard, Apple Pay). La venta queda registrada como <b>pagada</b>
+    automáticamente.</p>
+
+    <h3>Cómo usarlo (paso a paso)</h3>
+    <ol class="step">
+      <li>Entra al <b>Portal de socios</b> → pestaña <span class="path">POS / Registrar venta</span>.</li>
+      <li>Escribe el nombre del cliente y agrega los productos vendidos.</li>
+      <li>En <b>Método de pago</b> elige <span class="path">Tarjeta</span>.</li>
+      <li>Pulsa <b>"Cobrar $XX con tarjeta"</b>: se abre el formulario seguro de Stripe.</li>
+      <li>El cliente ingresa su tarjeta y se cobra. La venta se guarda como pagada y suma tu comisión.</li>
+    </ol>
+
+    <div class="see"><span class="ico">👁️</span><div><b>Dónde verlo:</b> Portal de socios →
+      <span class="path">POS / Registrar venta</span> → seleccionar <b>Tarjeta</b>.</div></div>
+    <div class="warn"><span class="ico">⚙️</span><div><b>Requisito:</b> el pago con tarjeta debe estar
+      activado por el administrador (ver <a href="#s7">sección 7</a>). Si no está activo, el sistema
+      avisa y el socio puede usar Efectivo, Zelle o Transferencia.</div></div>
+  </section>
+
+  <!-- 2 -->
+  <section class="card" id="s2">
+    <h2><span class="num">2</span> Comisiones: por porcentaje, por unidad o por producto</h2>
+    <p><span class="tag-before">Antes</span> aunque se configurara "$40 por unidad", al socio le seguía
+    apareciendo <b>"40 % de comisión"</b> calculado sobre el total. No respetaba el valor por unidad.</p>
+    <p><span class="tag-after">Ahora</span> el panel del socio muestra la comisión exacta según cómo
+    esté configurado: por porcentaje, por unidad o por producto. La etiqueta también es dinámica
+    (ej. <span class="badge">$40/unidad</span> en vez de un "40 %" fijo).</p>
+
+    <h3>Los 3 tipos de comisión</h3>
+    <table>
+      <tr><th>Modo</th><th>Qué significa</th><th>Ejemplo</th></tr>
+      <tr><td><b>Porcentaje</b></td><td>Gana un % del valor de la venta</td><td>40 % de $300 = $120</td></tr>
+      <tr><td><b>Fijo por unidad</b></td><td>Gana $X por cada producto vendido</td><td>$40 × 3 unidades = $120</td></tr>
+      <tr><td><b>Fijo por producto</b></td><td>Un monto distinto para cada producto</td><td>$40 BPC-157, $25 NAD+…</td></tr>
+    </table>
+
+    <h3>Dónde se configura la comisión de cada socio</h3>
+    <p>Esto fue la confusión principal: la comisión <b>por unidad o por producto</b> NO se pone en
+    "Commission rates" de Ajustes (eso es solo el % global por defecto). Se configura por cada socio:</p>
+    <ol class="step">
+      <li>Entra como administrador → menú <span class="path">Vendors / Partners</span>
+        (Socios).</li>
+      <li>Abre el socio que quieres configurar.</li>
+      <li>Elige el modo: <b>Porcentaje (%)</b>, <b>Fijo por unidad ($)</b> o <b>Fijo por producto</b>.</li>
+      <li>Escribe el monto (o el monto de cada producto) y guarda.</li>
+    </ol>
+    <div class="see"><span class="ico">👁️</span><div><b>Dónde verlo:</b> el socio lo ve al instante en su
+      <b>Dashboard</b> (insignia de comisión arriba) y en cada venta de "Ventas recientes". El admin lo
+      configura en <span class="path">Admin → Vendors/Partners</span>.</div></div>
+    <div class="warn"><span class="ico">💡</span><div><b>Importante:</b> cambiar el modo de comisión afecta
+      a las ventas <b>nuevas</b>. Las ventas ya hechas conservan la comisión que tenían al momento de
+      venderse (así no se alteran pagos pasados).</div></div>
+  </section>
+
+  <!-- 3 -->
+  <section class="card" id="s3">
+    <h2><span class="num">3</span> Opción "Recoger en persona" (sin envío)</h2>
+    <p><span class="tag-after">Nuevo</span> en el checkout, además de <b>Estándar ($12)</b> y
+    <b>Express ($40)</b>, ahora existe <b>"Recoger en persona"</b> con costo de envío
+    <b>$0</b>, para los clientes que pasan por los productos.</p>
+    <ul>
+      <li>Al elegirla, el envío queda en <b>$0.00</b> y se quita del total.</li>
+      <li>No pide dirección de envío (no hace falta); muestra una nota para coordinar la entrega por WhatsApp.</li>
+    </ul>
+    <div class="see"><span class="ico">👁️</span><div><b>Dónde verlo:</b> en la página de pago
+      (<span class="path">/cart</span> → "Ir a pagar") → sección <b>"¿Cómo quieres recibir tu pedido?"</b>.</div></div>
+  </section>
+
+  <!-- 4 -->
+  <section class="card" id="s4">
+    <h2><span class="num">4</span> Descuentos y cupones en las ventas del socio</h2>
+    <p><span class="tag-before">Antes</span> al vender desde el portal, los productos salían a precio
+    normal (sin el descuento de la página) y <b>no se podían poner códigos de descuento</b>.</p>
+    <p><span class="tag-after">Ahora</span>:</p>
+    <ul>
+      <li>Los productos del catálogo aparecen ya con su <b>precio rebajado</b> (igual que en la web).
+        El menú muestra el precio final y el % de descuento.</li>
+      <li>Hay un campo de <b>código de descuento</b> que se aplica al total de la venta.</li>
+    </ul>
+    <div class="see"><span class="ico">👁️</span><div><b>Dónde verlo:</b> Portal de socios →
+      <span class="path">POS / Registrar venta</span> → al elegir un producto del catálogo y en el campo
+      <b>"Código de descuento"</b>.</div></div>
+  </section>
+
+  <!-- 5 -->
+  <section class="card" id="s5">
+    <h2><span class="num">5</span> Pago con tarjeta limpio (sin Cash App ni Amazon Pay)</h2>
+    <p><span class="tag-before">Antes</span> el formulario de pago mostraba <b>Card, Cash App Pay y
+    Amazon Pay</b>.</p>
+    <p><span class="tag-after">Ahora</span> muestra <b>únicamente Tarjeta</b> (incluye Apple Pay /
+    Google Pay, que son tarjeta). Cash App Pay y Amazon Pay fueron removidos para una experiencia más
+    simple y profesional.</p>
+    <div class="see"><span class="ico">👁️</span><div><b>Dónde verlo:</b> en el checkout de la tienda y en
+      el cobro con tarjeta del portal de socios.</div></div>
+  </section>
+
+  <!-- 6 -->
+  <section class="card" id="s6">
+    <h2><span class="num">6</span> Dónde ver todas las ventas y comisiones</h2>
+    <table>
+      <tr><th>Qué</th><th>Dónde</th></tr>
+      <tr><td>Todas las ventas / pedidos (facturas)</td><td>Admin → <span class="path">Ventas</span> (<span class="path">/admin/sales</span>)</td></tr>
+      <tr><td>Comisiones y pagos a socios</td><td>Admin → <span class="path">Payouts</span> / <span class="path">Referrals</span></td></tr>
+      <tr><td>Sus propias ventas y comisión (socio)</td><td>Portal de socios → <span class="path">Finanzas</span> y <span class="path">Dashboard</span></td></tr>
+      <tr><td>Leads del quiz</td><td>Admin → <span class="path">Leads</span></td></tr>
+    </table>
+    <div class="see"><span class="ico">👁️</span><div><b>Resumen:</b> las "facturas" de todas las ventas
+      están en <span class="path">Admin → Ventas</span>. Cada socio ve solo las suyas en su panel de
+      Finanzas.</div></div>
+  </section>
+
+  <!-- 7 -->
+  <section class="card" id="s7">
+    <h2><span class="num">7</span> Cómo activar los pagos con tarjeta (Stripe)</h2>
+    <p>Para que el cobro con tarjeta funcione (en la tienda y en el portal de socios) se necesita una
+    cuenta de Stripe conectada:</p>
+    <ol class="step">
+      <li>Crea/usa una cuenta en <a href="https://dashboard.stripe.com">dashboard.stripe.com</a>.</li>
+      <li>Copia la <b>clave pública</b> (empieza por <code>pk_live_…</code>) y la <b>clave secreta</b>
+        (<code>sk_live_…</code>).</li>
+      <li>En el <b>panel de administración</b> → <span class="path">Ajustes</span>: activa
+        <b>"Pagos con tarjeta"</b> y pega la clave pública <code>pk_…</code>.</li>
+      <li>La clave secreta y el webhook se cargan del lado del servidor (lo hace el desarrollador con
+        <span class="path">firebase functions:secrets:set STRIPE_SECRET_KEY</span>).</li>
+    </ol>
+    <div class="warn"><span class="ico">🔐</span><div>Por seguridad, el sistema <b>recalcula el total en el
+      servidor</b> antes de cobrar: nunca confía en el precio que llega del navegador. Si alguien intenta
+      manipular el monto, el pago se rechaza.</div></div>
+  </section>
+
+  <!-- 8 -->
+  <section class="card" id="s8">
+    <h2><span class="num">8</span> Cómo activar las notificaciones por WhatsApp</h2>
+    <p>El sistema ya está programado para enviar avisos por WhatsApp (nuevo socio, nueva venta, pedido
+    enviado, etc.). Solo falta conectar la cuenta de WhatsApp Business de Meta:</p>
+    <ol class="step">
+      <li>En <b>Meta Business</b> → crear las plantillas de mensaje (categoría <i>UTILITY</i>):
+        <code>illium_new_affiliate</code>, <code>illium_new_sale</code>,
+        <code>illium_order_shipped</code>, etc.</li>
+      <li>Obtener el <b>Phone Number ID</b> y un <b>token permanente</b> de la WhatsApp Business API.</li>
+      <li>En <b>Admin → Ajustes</b>: poner el <span class="path">Phone Number ID</span> y los números de
+        WhatsApp del dueño que recibirán las alertas.</li>
+      <li>El token se guarda como secreto del servidor
+        (<span class="path">firebase functions:secrets:set META_WHATSAPP_TOKEN</span>) y se redespliega.</li>
+    </ol>
+    <div class="see"><span class="ico">✅</span><div><b>Recomendación:</b> usar un número de
+      <b>WhatsApp Business API</b> (no el WhatsApp personal). Así los avisos automáticos son estables y
+      profesionales.</div></div>
+  </section>
+
+  <p class="footer">
+    ILLIUM · Advanced Research Peptides &nbsp;·&nbsp; alliumhealth.net<br>
+    Documento de soporte — todos los cambios descritos ya están publicados y funcionando.
+  </p>
+
+</div>
+</body>
+</html>

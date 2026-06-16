@@ -1,0 +1,15 @@
+import admin from 'firebase-admin';
+import { readFileSync } from 'fs';
+const sa = JSON.parse(readFileSync('/Users/santiago/Desktop/Laboral/Sitios Web/Clientes/El rey Automatizacion/monaco-community-firebase-adminsdk-eyuy1-01d9d7084a.json', 'utf8'));
+admin.initializeApp({ credential: admin.credential.cert(sa) });
+const db = admin.firestore();
+const snap = await db.doc('settings/general').get();
+const d = snap.data() || {};
+const ok = (v) => v ? '✅' : '❌';
+console.log('publicSiteUrl       :', ok(d.publicSiteUrl), d.publicSiteUrl || '(empty)');
+console.log('metaWhatsappPhoneNumberId:', ok(d.metaWhatsappPhoneNumberId), d.metaWhatsappPhoneNumberId || '(empty)');
+console.log('ownerWhatsappNumbers:', ok(Array.isArray(d.ownerWhatsappNumbers) && d.ownerWhatsappNumbers.length), JSON.stringify(d.ownerWhatsappNumbers || []));
+console.log('adminEmails         :', ok(Array.isArray(d.adminEmails) && d.adminEmails.length), JSON.stringify(d.adminEmails || []));
+console.log('wholesaleList       :', ok(d.wholesaleList), (d.wholesaleList || '').slice(0,60));
+console.log('metaWhatsappTemplateName:', d.metaWhatsappTemplateName || '(default)');
+process.exit(0);

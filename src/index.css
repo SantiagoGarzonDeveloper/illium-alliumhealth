@@ -1,0 +1,209 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Lock horizontal axis everywhere — the document should never scroll sideways. */
+  html, body {
+    overflow-x: hidden;
+    /* `100%` instead of `100vw` to avoid the scrollbar-gutter overflow bug on Windows/Chrome. */
+    max-width: 100%;
+  }
+  body {
+    @apply bg-white text-slate-900 antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    /* Prevent bounce/elastic side scroll at the document edge, but DO allow
+       horizontal scrolling inside scroll containers (tables, carousels, etc.). */
+    overscroll-behavior-x: none;
+  }
+  /* IMPORTANT: do NOT add overflow-x: clip / hidden on #root — it kills the
+     scroll inside nested overflow-x: auto containers in some browsers (Safari).
+     The html/body `overflow-x: hidden` above is enough to prevent page-level
+     horizontal scroll while letting inner scrollable areas work. */
+  #root {
+    max-width: 100%;
+  }
+  /* Prominent always-visible horizontal scrollbar for orders/vendors panel. */
+  .orders-hscroll {
+    overflow-x: scroll;
+    overflow-y: hidden;
+  }
+  .orders-hscroll::-webkit-scrollbar {
+    height: 16px;
+    -webkit-appearance: none;
+  }
+  .orders-hscroll::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-top: 1px solid #e2e8f0;
+  }
+  .orders-hscroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #16a34a, #15803d);
+    border-radius: 8px;
+    border: 2px solid #f1f5f9;
+    min-width: 60px;
+  }
+  .orders-hscroll::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #15803d, #166534);
+  }
+  /* Prominent always-visible horizontal scroll bar for admin tables. */
+  .admin-hscroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: auto;
+    scrollbar-color: #16a34a #e2e8f0;
+    padding-bottom: 4px;
+  }
+  .admin-hscroll::-webkit-scrollbar {
+    height: 14px;
+  }
+  .admin-hscroll::-webkit-scrollbar-track {
+    background: #e2e8f0;
+    border-radius: 8px;
+  }
+  .admin-hscroll::-webkit-scrollbar-thumb {
+    background: #16a34a;
+    border-radius: 8px;
+    border: 2px solid #e2e8f0;
+  }
+  .admin-hscroll::-webkit-scrollbar-thumb:hover {
+    background: #15803d;
+  }
+  /* Force visible thin scrollbar on horizontal table containers so users
+     KNOW they can scroll the wide admin tables on tablet/narrow screens. */
+  .table-scroll-x {
+    /* `scroll` (not auto) forces the bar to be visible on every screen size,
+       so the user knows the table is scrollable to the right. */
+    overflow-x: scroll;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #f1f5f9;
+  }
+  .table-scroll-x::-webkit-scrollbar {
+    height: 10px;
+  }
+  .table-scroll-x::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 6px;
+  }
+  .table-scroll-x::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 6px;
+  }
+  .table-scroll-x::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+
+  ::selection {
+    @apply bg-brand-600/20 text-brand-900;
+  }
+
+  /* Smooth scroll */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Markdown rendering inside the AI protocol modal — readable doctor-style typography. */
+  .protocol-markdown h1, .protocol-markdown h2, .protocol-markdown h3 {
+    @apply font-bold text-slate-900 mt-4 mb-2;
+  }
+  .protocol-markdown h1 { @apply text-xl border-b border-slate-200 pb-2; }
+  .protocol-markdown h2 { @apply text-lg; }
+  .protocol-markdown h3 { @apply text-base text-brand-700; }
+  .protocol-markdown p { @apply leading-relaxed mb-2 text-slate-700; }
+  .protocol-markdown strong { @apply font-bold text-slate-900; }
+  .protocol-markdown em { @apply italic; }
+  .protocol-markdown ul, .protocol-markdown ol { @apply pl-5 my-2 space-y-1; }
+  .protocol-markdown ul { @apply list-disc; }
+  .protocol-markdown ol { @apply list-decimal; }
+  .protocol-markdown li { @apply leading-relaxed text-slate-700; }
+  .protocol-markdown li > p { @apply mb-0; }
+  .protocol-markdown table { @apply w-full text-xs border-collapse my-3; }
+  .protocol-markdown thead { @apply bg-brand-50; }
+  .protocol-markdown th, .protocol-markdown td {
+    @apply border border-slate-200 px-2.5 py-1.5 align-top text-left;
+  }
+  .protocol-markdown th { @apply font-bold text-slate-800; }
+  .protocol-markdown code {
+    @apply font-mono bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-[12px];
+  }
+  .protocol-markdown pre {
+    @apply bg-slate-900 text-slate-100 rounded-lg p-3 overflow-x-auto my-2 text-xs;
+  }
+  .protocol-markdown pre code { @apply bg-transparent text-slate-100 p-0; }
+  .protocol-markdown blockquote {
+    @apply border-l-4 border-brand-400 pl-3 italic text-slate-600 my-2;
+  }
+  .protocol-markdown hr { @apply border-slate-200 my-3; }
+  .protocol-markdown a { @apply text-brand-600 hover:underline; }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-xl border border-white/20 shadow-glass;
+  }
+
+  .glass-dark {
+    @apply bg-slate-900/80 backdrop-blur-xl border border-white/10;
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-brand-400;
+  }
+
+  .gradient-text-gold {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-gold-400 to-gold-600;
+  }
+
+  .card-premium {
+    @apply relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-card transition-all duration-300 hover:shadow-card-hover hover:border-slate-300/80;
+  }
+
+  .btn-premium {
+    @apply relative overflow-hidden rounded-xl font-semibold transition-all duration-200 active:scale-[0.98];
+  }
+
+  .btn-shine::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: shimmer 3s infinite;
+  }
+
+  .section-divider {
+    @apply w-16 h-1 rounded-full bg-gradient-to-r from-brand-500 to-brand-600 mx-auto;
+  }
+
+  .input-premium {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 hover:border-slate-300;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .mask-gradient {
+    mask-image: linear-gradient(to bottom, black 60%, transparent);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400;
+}

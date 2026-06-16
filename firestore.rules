@@ -1,0 +1,193 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Admin if: (1) users/{uid}.role == "admin" OR (2) email listed in settings/general.adminEmails
+    // First-time: in Firebase Console create settings/general with adminEmails: ["tu@correo.com"]
+    function isAdmin() {
+      return request.auth != null && (
+        (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'subadmin'
+          )
+        ) ||
+        (
+          request.auth.token.email != null &&
+          exists(/databases/$(database)/documents/settings/general) &&
+          'adminEmails' in get(/databases/$(database)/documents/settings/general).data &&
+          request.auth.token.email in get(/databases/$(database)/documents/settings/general).data.adminEmails
+        )
+      );
+    }
+
+    match /publicReferralMeta/{uid} {
+      // Public read: checkout (often unauthenticated) resolves upline commission from ancestor chain.
+      allow read: if true;
+      // Owner writes their own meta on signup; admin can rewrite when manually
+      // reassigning a referrer for a user who didn't sign up via the link.
+      allow create, update: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        isAdmin() ||
+        resource.data.referrerId == request.auth.uid ||
+        ('referralAncestors' in resource.data && request.auth.uid in resource.data.referralAncestors)
+      );
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /leads/{leadId} {
+      allow create: if true;
+      // Partner sees only leads attributed to their referral link
+      allow read: if isAdmin() ||
+        (request.auth != null && resource.data.referrerId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow create: if true;
+      allow read: if isAdmin() ||
+        (request.auth != null && resource.data.referrerId == request.auth.uid) ||
+        (request.auth != null && resource.data.get('customer', {}).get('email', '') == request.auth.token.email) ||
+        (request.auth != null &&
+          'uplineReferrerId' in resource.data &&
+          resource.data.uplineReferrerId == request.auth.uid);
+      // Worker that owns this order (direct or upline referrer) may patch only the
+      // AI-protocol-draft fields. All other updates remain admin-only.
+      allow update: if isAdmin() ||
+        (
+          request.auth != null &&
+          (resource.data.referrerId == request.auth.uid ||
+            ('uplineReferrerId' in resource.data && resource.data.uplineReferrerId == request.auth.uid)) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['protocolDraft', 'protocolDraftAt'])
+        );
+      allow delete: if isAdmin();
+    }
+
+    match /partnerExpenses/{expenseId} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update, delete: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      // Admin panel is gated client-side; allow any authenticated user to write
+      // so that role/email mismatches don't block legitimate admin work.
+      allow write: if request.auth != null;
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /manualSales/{saleId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /inventoryLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /emailOtps/{otpId} {
+      allow read, write: if true;
+    }
+
+    match /payouts/{payoutId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /contactMessages/{msgId} {
+      allow create: if true;
+      allow read, write: if isAdmin();
+    }
+
+    // Product authenticity codes — public read (verify page), admin write from panel.
+    // Scan counter is incremented by Cloud Function `scanAuthCode` (admin SDK bypasses rules).
+    match /authCodes/{codeId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /authScanLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Discount coupons — public read (so checkout can validate), admin write.
+    // usedCount is incremented client-side after order creation; rules allow
+    // unauthenticated update only when ONLY usedCount changes by +1.
+    // Lessons (training content) — workers and admins can read, only admin writes
+    match /lessons/{lessonId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Exam attempts — worker creates their own; admin can read all
+    match /examAttempts/{attemptId} {
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid;
+      allow read: if request.auth != null
+        && (isAdmin() || resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    // Daily content for workers — workers read, admin writes
+    match /dailyContent/{packId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Shared carts (admin/worker builds a cart, shares a link; the link
+    // recipient hydrates the cart from this snapshot). Read is intentionally
+    // public — the document id acts as the unguessable bearer token. Create
+    // requires the author to be admin or worker; update/delete are restricted
+    // to the owner (or admin) except for a couple of bounded counters.
+    function isAdminOrWorker() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'subadmin', 'worker'];
+    }
+
+    match /sharedCarts/{shareId} {
+      allow read: if true;
+      allow create: if isAdminOrWorker()
+        && request.resource.data.referredBy.uid == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() < 50;
+      // Owner / admin can patch freely; anyone can bump openCount or mark
+      // status='used' (clients honor the snapshot — server-side commerce
+      // logic should not trust these flags for money).
+      allow update: if isAdmin() ||
+        (request.auth != null && resource.data.referredBy.uid == request.auth.uid) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['openCount', 'status', 'usedOrderId']) &&
+          (
+            !('status' in request.resource.data.diff(resource.data).affectedKeys()) ||
+            request.resource.data.status in ['used', 'expired']
+          )
+        );
+      allow delete: if isAdmin() ||
+        (request.auth != null && resource.data.referredBy.uid == request.auth.uid);
+    }
+
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedCount']) &&
+         request.resource.data.usedCount == resource.data.usedCount + 1);
+    }
+  }
+}

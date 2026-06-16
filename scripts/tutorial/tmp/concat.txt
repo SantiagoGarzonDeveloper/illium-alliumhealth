@@ -1,0 +1,5 @@
+file '/Users/santiago/Desktop/Laboral/Sitios Web/Clientes/El rey Automatizacion/el-rey-automatizacion/scripts/tutorial/tmp/dashboard-en.mp4'
+file '/Users/santiago/Desktop/Laboral/Sitios Web/Clientes/El rey Automatizacion/el-rey-automatizacion/scripts/tutorial/tmp/products-en.mp4'
+file '/Users/santiago/Desktop/Laboral/Sitios Web/Clientes/El rey Automatizacion/el-rey-automatizacion/scripts/tutorial/tmp/finance-en.mp4'
+file '/Users/santiago/Desktop/Laboral/Sitios Web/Clientes/El rey Automatizacion/el-rey-automatizacion/scripts/tutorial/tmp/settings-en.mp4'
+file '/Users/santiago/Desktop/Laboral/Sitios Web/Clientes/El rey Automatizacion/el-rey-automatizacion/scripts/tutorial/tmp/flows-en.mp4'

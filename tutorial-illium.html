@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tutorial ILLIUM · Sistema de Autenticidad y COA</title>
+<style>
+  :root { --brand:#047857; --brand-dark:#064e3b; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; background:#0f172a; color:#fff; overflow:hidden; }
+  .stage { position:fixed; inset:0; display:flex; flex-direction:column; background: linear-gradient(135deg, #064e3b 0%, #0f172a 60%, #134e4a 100%); }
+
+  .header { padding:14px 26px; display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.25); border-bottom:1px solid rgba(255,255,255,0.08); flex-shrink:0; }
+  .logo { display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:0.2em; }
+  .logo .box { width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,#10b981,#047857); display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .logo .sub { font-size:9px; letter-spacing:0.3em; opacity:0.7; font-weight:600; }
+  .progress { height:3px; background:rgba(255,255,255,0.1); }
+  .progress > div { height:100%; background:linear-gradient(90deg,#10b981,#34d399); width:0%; transition:width 0.3s; }
+
+  .body { flex:1; display:flex; align-items:center; justify-content:center; padding:24px; position:relative; overflow:hidden; }
+  .slide { width:100%; max-width:1100px; opacity:0; transform:scale(0.96); transition:opacity .55s ease, transform .55s ease; position:absolute; pointer-events:none; }
+  .slide.active { opacity:1; transform:scale(1); position:relative; pointer-events:auto; }
+  .slide h1 { font-size:46px; margin:0 0 14px; font-weight:900; letter-spacing:-0.5px; }
+  .slide h2 { font-size:30px; margin:0 0 16px; font-weight:800; }
+  .slide p.lead { font-size:17px; opacity:0.85; line-height:1.6; max-width:760px; margin:0 0 24px; }
+  .badge { display:inline-block; padding:6px 14px; border-radius:999px; background:rgba(16,185,129,0.18); color:#6ee7b7; font-size:11px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:14px; }
+
+  .browser { background:#fff; color:#0f172a; border-radius:14px; overflow:hidden; box-shadow:0 25px 70px rgba(0,0,0,0.55); animation: floatIn .6s ease; }
+  @keyframes floatIn { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  .browser .topbar { background:#f1f5f9; padding:9px 14px; display:flex; gap:8px; align-items:center; border-bottom:1px solid #e2e8f0; }
+  .browser .dot { width:11px; height:11px; border-radius:50%; }
+  .browser .dot.r { background:#ef4444; } .browser .dot.y { background:#f59e0b; } .browser .dot.g { background:#10b981; }
+  .browser .url { flex:1; background:#fff; border-radius:6px; padding:5px 12px; font-size:12px; color:#475569; font-family:ui-monospace,monospace; border:1px solid #e2e8f0; }
+  .browser .content { padding:22px; min-height:340px; }
+
+  .ring { position:relative; }
+  .ring::after { content:''; position:absolute; inset:-8px; border-radius:14px; border:3px solid #fbbf24; box-shadow:0 0 0 8px rgba(251,191,36,0.2); animation:pulseRing 1.4s infinite; }
+  @keyframes pulseRing { 0%,100%{ box-shadow:0 0 0 8px rgba(251,191,36,0.2);} 50%{ box-shadow:0 0 0 16px rgba(251,191,36,0.05);} }
+
+  .pointer { position:absolute; font-size:50px; pointer-events:none; animation:tap 1.2s infinite; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4)); z-index:5;}
+  @keyframes tap { 0%,100%{ transform:translate(0,0) scale(1);} 50%{ transform:translate(-6px,-6px) scale(1.1);} }
+
+  .stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
+  .stat { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:12px; }
+  .stat .lbl { font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; }
+  .stat .num { font-size:24px; font-weight:900; color:#0f172a; margin-top:4px; }
+
+  .btn-primary { background:var(--brand); color:#fff; border:0; padding:9px 16px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
+  .btn-outline { background:#fff; color:var(--brand); border:1px solid var(--brand); padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; }
+
+  .form { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .form .full { grid-column:1/-1; }
+  .form label { font-size:10px; color:#64748b; font-weight:700; display:block; margin-bottom:3px; text-transform:uppercase; letter-spacing:0.05em; }
+  .form input, .form select { width:100%; padding:7px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; }
+
+  .coa { background:#fff; color:#0f172a; padding:16px; border:1px solid #e2e8f0; border-radius:10px; font-size:10px; box-shadow:0 25px 70px rgba(0,0,0,0.55); max-width:680px; margin:0 auto; }
+  .coa .hd { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+  .coa .title { font-family:'Times New Roman',serif; font-size:20px; font-weight:800; }
+  .coa .table { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
+  .coa .tbl { border:1px solid #cbd5e1; border-radius:4px; overflow:hidden; }
+  .coa .tbl-row { display:grid; grid-template-columns:100px 1fr; }
+  .coa .tbl-row > div { padding:4px 8px; }
+  .coa .tbl-row > div:first-child { background:#dbeafe; font-weight:700; }
+  .coa .tbl-row + .tbl-row { border-top:1px solid #cbd5e1; }
+  .coa .pink { background:#fee2e2; color:#991b1b; padding:6px; text-align:center; font-weight:700; margin:6px 0; font-size:9px; }
+  .coa .chart { height:50px; background:#fafafa; border:1px solid #e2e8f0; position:relative; margin:6px 0; }
+  .coa .chart::before { content:''; position:absolute; left:0; right:0; bottom:14px; height:1px; background:#94a3b8; }
+  .coa .chart::after { content:''; position:absolute; left:55%; bottom:14px; width:2px; height:32px; background:#0f172a; box-shadow:-2px 0 0 #0f172a, 2px 0 0 #0f172a; }
+
+  .qr-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:8px; }
+  .qr-cell { background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:10px; text-align:center; }
+  .qr-img { width:78px; height:78px; background: linear-gradient(45deg,#000 25%,transparent 25%) 0 0/12px 12px, linear-gradient(-45deg,#000 25%,transparent 25%) 0 0/12px 12px, linear-gradient(45deg,transparent 75%,#000 75%) 6px 6px/12px 12px, linear-gradient(-45deg,transparent 75%,#000 75%) 6px 6px/12px 12px, #fff; margin:0 auto 6px; border:4px solid #fff; box-shadow:0 0 0 1px #cbd5e1; }
+  .qr-cell .code { font-family:ui-monospace,monospace; font-size:10px; font-weight:700; color:#0f172a; }
+  .qr-cell .meta { font-size:9px; color:#64748b; margin-top:2px; }
+
+  .verify-card { background:#fff; color:#0f172a; border-radius:18px; max-width:340px; margin:0 auto; overflow:hidden; box-shadow:0 25px 70px rgba(0,0,0,0.55); }
+  .verify-hero { background:linear-gradient(135deg,#047857,#0d9488); padding:30px 18px; text-align:center; color:#fff; }
+  .verify-hero.alert { background:linear-gradient(135deg,#d97706,#dc2626); }
+  .verify-hero .shield { width:64px; height:64px; border-radius:50%; background:rgba(255,255,255,0.2); margin:0 auto 12px; display:flex; align-items:center; justify-content:center; font-size:32px; }
+  .verify-hero h3 { margin:0; font-weight:900; letter-spacing:0.15em; font-size:18px; }
+  .verify-hero .sub { font-size:11px; opacity:0.9; margin-top:6px; }
+  .verify-body { padding:16px; }
+  .verify-body .pill { background:#f1f5f9; border-radius:10px; padding:10px; text-align:center; margin-bottom:10px; }
+  .verify-body .row2 { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid #f1f5f9; font-size:12px; }
+
+  .ctrls { padding:12px 24px; background:rgba(0,0,0,0.4); border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:space-between; gap:14px; flex-shrink:0; }
+  button.cbtn { background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2); padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px; }
+  button.cbtn:hover { background:rgba(255,255,255,0.2); }
+  button.cbtn.play { background:var(--brand); border-color:var(--brand); }
+  button.cbtn.rec { background:#dc2626; border-color:#dc2626; }
+  button.cbtn.rec.recording { animation:blink 1.2s infinite; }
+  @keyframes blink { 0%,100%{ opacity:1; } 50%{ opacity:0.5; } }
+  .step-label { font-size:13px; opacity:0.8; }
+
+  .caption { position:absolute; left:50%; bottom:20px; transform:translateX(-50%); background:rgba(0,0,0,0.78); color:#fff; padding:12px 22px; border-radius:12px; max-width:78%; font-size:14px; line-height:1.5; backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.1); text-align:center; z-index:10; }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:center; }
+  .feat { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:16px; margin-bottom:10px; }
+  .feat .ico { font-size:26px; margin-bottom:6px; }
+  .feat h3 { margin:0 0 4px; font-size:16px; }
+  .feat p { margin:0; opacity:0.8; font-size:13px; }
+  .err { background:#7f1d1d; color:#fecaca; padding:6px 12px; border-radius:6px; font-size:11px; max-width:380px; }
+  .hidden { display:none !important; }
+
+  .printable-btn { display:inline-block; padding:8px 16px; background:#0f172a; color:#fff; border-radius:8px; font-size:13px; font-weight:700; }
+  body.capture .ctrls, body.capture .caption { display:none !important; }
+  body.capture .body { padding-bottom: 80px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="header">
+    <div class="logo">
+      <div class="box">I</div>
+      <div>
+        <div>ILLIUM</div>
+        <div class="sub">TUTORIAL · SISTEMA AUTENTICIDAD</div>
+      </div>
+    </div>
+    <div class="step-label" id="step-label">Diapositiva 1 / 12</div>
+  </div>
+  <div class="progress"><div id="progress-bar"></div></div>
+
+  <div class="body" id="slides">
+
+    <!-- 1. Intro -->
+    <div class="slide active" data-narration="Hola. En este tutorial te muestro paso a paso cómo funciona el sistema de autenticidad y certificados COA de ILLIUM. Vas a aprender a entrar al panel, generar lotes con códigos QR únicos, crear el certificado de análisis automático en formato laboratorio, y ver cómo lo recibe tu cliente final. Empecemos.">
+      <div style="text-align:center;">
+        <div class="badge">Tutorial Interactivo</div>
+        <h1>Sistema de Autenticidad<br/>y Certificados COA</h1>
+        <p class="lead" style="margin:0 auto 20px;">Te guío en pocos minutos por todo el flujo: entrar al admin, generar lotes, crear certificados automáticos, y la experiencia que ve tu cliente.</p>
+        <div style="display:inline-flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:900px;">
+          <div class="feat" style="width:240px;"><div class="ico">🔐</div><h3>QR único por vial</h3><p>Anti-falsificación con detección de re-escaneo</p></div>
+          <div class="feat" style="width:240px;"><div class="ico">📄</div><h3>COA automático</h3><p>PDF formato laboratorio en un click</p></div>
+          <div class="feat" style="width:240px;"><div class="ico">🔗</div><h3>URL pública por lote</h3><p>monaco-community.web.app/coa/...</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. URL inicial -->
+    <div class="slide" data-narration="Primer paso. Abre tu navegador, puede ser Chrome, Safari o el que prefieras, y entra a la siguiente dirección: monaco community punto web punto app, slash login. Esta es la entrada al sistema.">
+      <div style="text-align:center;">
+        <div class="badge">Paso 1 — Entrar</div>
+        <h2>Abre esta dirección en tu navegador</h2>
+        <div style="background:rgba(0,0,0,0.4);padding:20px 30px;border-radius:12px;font-family:ui-monospace,monospace;font-size:22px;border:2px solid #34d399;display:inline-block;margin-bottom:20px;">
+          👉 monaco-community.web.app/login
+        </div>
+        <p class="lead" style="margin:0 auto;">Es la misma página de login normal del sitio.</p>
+      </div>
+    </div>
+
+    <!-- 3. Login -->
+    <div class="slide" data-narration="Aquí pones tu correo de administrador y tu contraseña, y le das click al botón verde Iniciar sesión.">
+      <div class="grid-2">
+        <div>
+          <div class="badge">Paso 2 — Iniciar sesión</div>
+          <h2>Ingresa con tu cuenta admin</h2>
+          <p class="lead">Usa el correo y contraseña de administrador. Si no recuerdas tu cuenta, contáctame para recuperarla.</p>
+          <ol style="font-size:14px;line-height:2;opacity:0.9;">
+            <li>Escribe tu <b>email</b> de admin</li>
+            <li>Escribe tu <b>contraseña</b></li>
+            <li>Click en <b>Iniciar sesión</b></li>
+          </ol>
+        </div>
+        <div class="browser">
+          <div class="topbar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">monaco-community.web.app/login</div></div>
+          <div class="content" style="display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#ecfdf5,#fff);position:relative;">
+            <div style="width:300px;background:#fff;padding:22px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);text-align:center;">
+              <div style="width:48px;height:48px;background:linear-gradient(135deg,#10b981,#047857);border-radius:10px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:22px;">I</div>
+              <h3 style="margin:0 0 6px;color:#0f172a;font-size:18px;">Bienvenido</h3>
+              <p style="margin:0 0 14px;color:#64748b;font-size:11px;">Ingresa a tu cuenta</p>
+              <input style="width:100%;padding:7px;border:1px solid #cbd5e1;border-radius:6px;margin-bottom:6px;font-size:12px;" value="admin@illium.com" disabled>
+              <input style="width:100%;padding:7px;border:1px solid #cbd5e1;border-radius:6px;margin-bottom:12px;font-size:12px;" type="password" value="••••••••" disabled>
+              <div class="ring"><button class="btn-primary" style="width:100%;">Iniciar sesión</button></div>
+            </div>
+            <div class="pointer" style="right:60px;bottom:60px;">👆</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Ir a Authenticity -->
+    <div class="slide" data-narration="Una vez dentro, ve a esta dirección: monaco community punto web punto app, slash admin, slash authenticity. Este es el panel donde manejas todos los códigos de autenticidad y los certificados.">
+      <div style="text-align:center;">
+        <div class="badge">Paso 3 — Abrir panel</div>
+        <h2>Ve al panel de autenticidad</h2>
+        <div style="background:rgba(0,0,0,0.4);padding:20px 30px;border-radius:12px;font-family:ui-monospace,monospace;font-size:20px;border:2px solid #34d399;display:inline-block;margin-bottom:20px;">
+          👉 monaco-community.web.app/admin/authenticity
+        </div>
+        <p class="lead" style="margin:0 auto;">También puedes llegar aquí desde el menú lateral del admin, en la opción <b>"Autenticidad"</b>.</p>
+      </div>
+    </div>
+
+    <!-- 5. Vista admin -->
+    <div class="slide" data-narration="Esta es la pantalla principal. Arriba ves cuatro contadores: total de códigos generados, cuántos fueron escaneados por clientes, cuántas alertas tienes y cuántos códigos están anulados. Para crear tu primer lote, busca el botón verde que dice Generar lote, arriba a la derecha, y haz click ahí.">
+      <div>
+        <div class="badge">Paso 4 — Click en Generar lote</div>
+        <h2>Panel de Autenticidad</h2>
+        <div class="browser" style="max-width:980px;margin:0 auto;position:relative;">
+          <div class="topbar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">monaco-community.web.app/admin/authenticity</div></div>
+          <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <h3 style="margin:0;color:#0f172a;font-size:18px;">🛡️ Autenticidad de Producto</h3>
+              <div class="ring"><button class="btn-primary">+ Generar lote</button></div>
+            </div>
+            <div class="stat-grid">
+              <div class="stat"><div class="lbl">Total códigos</div><div class="num">0</div></div>
+              <div class="stat"><div class="lbl">Escaneados</div><div class="num" style="color:#047857;">0</div></div>
+              <div class="stat"><div class="lbl">⚠ Alertas</div><div class="num" style="color:#dc2626;">0</div></div>
+              <div class="stat"><div class="lbl">Anulados</div><div class="num" style="color:#64748b;">0</div></div>
+            </div>
+            <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;padding:24px;text-align:center;color:#64748b;font-size:12px;">
+              No hay códigos. Genera el primer lote con el botón "Generar lote".
+            </div>
+          </div>
+          <div class="pointer" style="top:60px;right:50px;">👆</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Form -->
+    <div class="slide" data-narration="Ahora llena el formulario. Primero elige el producto, por ejemplo Tesamorelin diez miligramos. Luego escribe el número de lote, por ejemplo S E M X cero cero once guion cero dos. Después la pureza, ejemplo noventa y nueve punto doscientos cincuenta y tres por ciento. La cantidad de viales que quieres, máximo quinientos por lote. La fecha del análisis. El nombre del laboratorio, por ejemplo A C S Laboratory. Y los métodos, normalmente H P L C coma L C M S. Si tienes el COA en PDF lo subes en el campo de abajo. Si no lo tienes, déjalo vacío y lo generamos automático en el siguiente paso. Cuando todo esté listo, click en Generar códigos.">
+      <div>
+        <div class="badge">Paso 5 — Llenar datos</div>
+        <h2>Completa el formulario del lote</h2>
+        <div class="browser" style="max-width:680px;margin:0 auto;">
+          <div class="topbar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">Generar lote de códigos</div></div>
+          <div class="content">
+            <div class="form">
+              <div class="full"><label>Producto</label><select><option>Tesamorelin 10mg</option></select></div>
+              <div><label>Lote</label><input value="SEMX-0011-02"></div>
+              <div><label>Pureza</label><input value="99.253%"></div>
+              <div class="full"><label>Cantidad (1-500)</label><input value="10"></div>
+              <div><label>Fecha análisis</label><input value="2026-04-27"></div>
+              <div><label>Laboratorio</label><input value="ACS Laboratory"></div>
+              <div class="full"><label>Métodos</label><input value="HPLC, LC-MS"></div>
+              <div class="full"><label>COA (PDF) — opcional</label><div style="font-size:11px;color:#64748b;padding:6px 10px;border:1px dashed #cbd5e1;border-radius:6px;">📎 Déjalo vacío si lo vas a generar automático</div></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+              <button class="btn-outline">Cancelar</button>
+              <div class="ring"><button class="btn-primary">Generar códigos</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. QRs PDF -->
+    <div class="slide" data-narration="Listo. Tu navegador descarga automáticamente un PDF con los diez códigos QR. Cada QR es único y apunta a la URL de verificación de ese vial específico. Imprime este PDF en papel adhesivo, recorta cada código y pégalo en su vial correspondiente.">
+      <div>
+        <div class="badge">Resultado — PDF descargado</div>
+        <h2>📄 QRs imprimibles para los viales</h2>
+        <p class="lead" style="text-align:center;margin:0 auto 16px;">Se descarga un PDF con todos los códigos. Imprime y pega uno en cada vial.</p>
+        <div class="browser" style="max-width:780px;margin:0 auto;">
+          <div class="topbar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">📥 ILLIUM_QR_SEMX-0011-02_10codes.pdf</div></div>
+          <div class="content">
+            <div class="qr-grid">
+              <div class="qr-cell"><div class="qr-img"></div><div class="code">IL-A4K2-9X3M</div><div class="meta">SEMX-0011-02</div></div>
+              <div class="qr-cell"><div class="qr-img"></div><div class="code">IL-B7R3-2L8N</div><div class="meta">SEMX-0011-02</div></div>
+              <div class="qr-cell"><div class="qr-img"></div><div class="code">IL-D9K1-4M2P</div><div class="meta">SEMX-0011-02</div></div>
+              <div class="qr-cell"><div class="qr-img"></div><div class="code">IL-F3X8-7Q5R</div><div class="meta">SEMX-0011-02</div></div>
+              <div class="qr-cell"><div class="qr-img"></div><div class="code">IL-H6T2-9N4S</div><div class="meta">SEMX-0011-02</div></div>
+              <div class="qr-cell"><div class="qr-img"></div><div class="code">IL-J5W7-3P8T</div><div class="meta">SEMX-0011-02</div></div>
+              <div class="qr-cell"><div class="qr-img"></div><div class="code">IL-K8L4-6V2U</div><div class="meta">SEMX-0011-02</div></div>
+              <div class="qr-cell"><div class="qr-img"></div><div class="code">IL-M2Y9-5W7X</div><div class="meta">SEMX-0011-02</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. Auto-COA -->
+    <div class="slide" data-narration="Ahora el certificado de análisis. Vuelve a la pantalla del panel y baja un poco hasta la tabla que dice Lotes. Ahí verás tu lote recién creado. En la columna de la derecha hay dos botones: el primero dice QRs para volver a descargar los códigos, y el segundo dice Auto guion COA. Haz click en Auto guion COA. El sistema genera el certificado en formato laboratorio profesional, y lo asigna automáticamente a los diez viales del lote.">
+      <div>
+        <div class="badge">Paso 6 — Click en Auto-COA</div>
+        <h2>Generar el certificado automático</h2>
+        <div class="browser" style="max-width:880px;margin:0 auto;position:relative;">
+          <div class="topbar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">monaco-community.web.app/admin/authenticity</div></div>
+          <div class="content">
+            <h3 style="margin:0 0 10px;color:#0f172a;font-size:16px;">Lotes</h3>
+            <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+              <div style="background:#f8fafc;padding:8px 12px;font-size:10px;color:#64748b;font-weight:700;display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr 1fr 2fr;gap:8px;">
+                <div>PRODUCTO</div><div>LOTE</div><div>TOTAL</div><div>SCANS</div><div>ALERTAS</div><div style="text-align:right;">ACCIÓN</div>
+              </div>
+              <div style="padding:10px 12px;display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr 1fr 2fr;gap:8px;align-items:center;font-size:12px;">
+                <div>Tesamorelin 10mg</div>
+                <div style="font-family:ui-monospace,monospace;font-size:11px;">SEMX-0011-02</div>
+                <div style="font-weight:700;">10</div>
+                <div style="color:#047857;">0</div>
+                <div style="color:#dc2626;">0</div>
+                <div style="text-align:right;display:flex;gap:6px;justify-content:flex-end;">
+                  <button class="btn-outline">⬇ QRs</button>
+                  <div class="ring" style="display:inline-block;"><button class="btn-outline" style="background:var(--brand);color:#fff;border-color:var(--brand);">📄 Auto-COA</button></div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:14px;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:10px;color:#065f46;font-size:12px;">
+              ✓ COA generado y asignado a los 10 códigos del lote
+            </div>
+          </div>
+          <div class="pointer" style="top:170px;right:60px;">👆</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9. COA preview -->
+    <div class="slide" data-narration="Este es el certificado de análisis que se descarga. Tiene formato profesional de laboratorio, igual al que usan los grandes labs. Incluye: encabezado con logo y título, número de accession y datos del cliente, fechas de recepción y reporte, tabla con producto, contenido neto, identidad, lote, pureza y apariencia. El banner rosado indica los métodos usados, en este caso H P L C con detección por espectrometría de masas. Abajo se muestra la pureza grande en verde, el cromatograma del análisis, la firma del químico principal, y el número de COA. Este es el archivo que tu cliente puede descargar.">
+      <div>
+        <div class="badge">Resultado — Certificado generado</div>
+        <h2 style="text-align:center;">📄 COA en formato laboratorio</h2>
+        <div class="coa">
+          <div class="hd">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <div style="width:28px;height:28px;background:#047857;border-radius:6px;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px;">I</div>
+              <div><div style="font-weight:800;font-size:13px;">ILLIUM</div><div style="font-size:7px;color:#64748b;letter-spacing:0.2em;">DIAGNOSTICS</div></div>
+            </div>
+            <div class="title">Certificate of Analysis</div>
+          </div>
+          <div class="tbl">
+            <div class="tbl-row"><div>Accession #</div><div>2603100077</div></div>
+            <div class="tbl-row"><div>Client</div><div>ILLIUM</div></div>
+            <div class="tbl-row"><div>Search Code</div><div>ILL2603100077</div></div>
+            <div class="tbl-row"><div>Received</div><div>04/27/2026</div></div>
+          </div>
+          <div class="table">
+            <div class="tbl">
+              <div class="tbl-row"><div>Product</div><div>Tesamorelin 10mg</div></div>
+              <div class="tbl-row"><div>Net Content</div><div>10.73 mg</div></div>
+              <div class="tbl-row"><div>Identity</div><div>Tesamorelin</div></div>
+            </div>
+            <div class="tbl">
+              <div class="tbl-row"><div>Lot</div><div>SEMX-0011-02</div></div>
+              <div class="tbl-row"><div>Purity</div><div><b>99.253%</b></div></div>
+              <div class="tbl-row"><div>Appearance</div><div>White Powder</div></div>
+            </div>
+          </div>
+          <div class="pink">All Chemical Analysis was performed by HPLC with UV Detection Coupled with Mass Spectrometry</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid #cbd5e1;border-radius:4px;overflow:hidden;font-size:9px;">
+            <div style="padding:5px;text-align:center;background:#dbeafe;font-weight:700;">Mass Identification</div>
+            <div style="padding:5px;text-align:center;background:#dbeafe;font-weight:700;">Result</div>
+            <div style="padding:8px;text-align:center;font-weight:700;border-top:1px solid #cbd5e1;font-size:13px;">Tesamorelin</div>
+            <div style="padding:8px;text-align:center;font-weight:900;color:#047857;border-top:1px solid #cbd5e1;border-left:1px solid #cbd5e1;font-size:14px;">99.253%</div>
+          </div>
+          <div class="chart"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:end;">
+            <div>
+              <div style="font-family:'Times New Roman',serif;font-style:italic;font-size:13px;border-bottom:1px solid #cbd5e1;padding-bottom:2px;">Alex Johnson</div>
+              <div style="font-size:8px;color:#64748b;margin-top:2px;">Alex Johnson<br/>Principal Chemist</div>
+            </div>
+            <div style="text-align:right;font-weight:800;font-size:11px;">COA: 2603100077</div>
+          </div>
+          <div class="pink" style="margin-top:6px;font-size:8px;">Searchable via: monaco-community.web.app/coa/SEMX-0011-02</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10. Cliente: COA pública -->
+    <div class="slide" data-narration="Cuando tu cliente entra a la URL del lote, monaco community punto web punto app, slash COA, slash el número de lote, ve esta pantalla. Tiene el nombre del producto, el batch, la pureza grande en verde, y un botón negro abajo para descargar el certificado en PDF.">
+      <div>
+        <div class="badge">Paso 7 — Vista del cliente</div>
+        <h2>Página pública del lote</h2>
+        <div class="grid-2">
+          <div>
+            <p class="lead">Cualquier persona con el link puede ver y descargar el COA del lote.</p>
+            <div style="background:rgba(0,0,0,0.4);padding:14px 18px;border-radius:10px;font-family:ui-monospace,monospace;font-size:13px;border:1px solid rgba(255,255,255,0.15);">
+              monaco-community.web.app/coa/<b style="color:#34d399;">SEMX-0011-02</b>
+            </div>
+            <p class="lead" style="margin-top:14px;font-size:14px;">Lo que muestra:</p>
+            <ul style="font-size:13px;line-height:1.9;opacity:0.9;">
+              <li>✅ Nombre del producto</li>
+              <li>✅ Número de batch</li>
+              <li>✅ Fecha del análisis</li>
+              <li>✅ Laboratorio y métodos</li>
+              <li>✅ Pureza medida</li>
+              <li>✅ Botón para descargar el PDF</li>
+            </ul>
+          </div>
+          <div class="browser">
+            <div class="topbar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">monaco-community.web.app/coa/SEMX-0011-02</div></div>
+            <div class="content" style="background:#f8fafc;">
+              <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;">
+                <div style="font-size:9px;color:#64748b;letter-spacing:0.2em;font-weight:700;">PRODUCTO ANALIZADO</div>
+                <h3 style="margin:6px 0;color:#0f172a;font-size:18px;">Tesamorelin 10mg</h3>
+                <div style="font-family:ui-monospace,monospace;font-size:11px;color:#64748b;">Batch: SEMX-0011-02</div>
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9;">
+                  <div style="font-size:9px;color:#64748b;letter-spacing:0.2em;font-weight:700;">PUREZA MEDIDA</div>
+                  <div style="font-size:38px;font-weight:900;color:#047857;line-height:1;">99.253%</div>
+                </div>
+                <button class="btn-primary" style="width:100%;margin-top:12px;background:#0f172a;font-size:13px;">⬇ Descargar COA en PDF</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11. Cliente escanea QR -->
+    <div class="slide" data-narration="Cuando el cliente escanea el QR del vial con su celular, llega a una pantalla de aviso de privacidad, acepta, y ve el resultado: VERIFIED AUTHENTIC en verde, junto con el nombre del producto, su pureza, su lote, y el estado PASS. Desde ahí puede descargar el COA o ver la página completa del lote.">
+      <div>
+        <div class="badge">Experiencia del cliente — QR del vial</div>
+        <h2 style="text-align:center;">Lo que pasa al escanear el QR</h2>
+        <div class="grid-2">
+          <div>
+            <p class="lead">El cliente apunta la cámara del celular al QR del vial. El navegador abre automáticamente:</p>
+            <div style="background:rgba(0,0,0,0.4);padding:12px 18px;border-radius:10px;font-family:ui-monospace,monospace;font-size:12px;border:1px solid rgba(255,255,255,0.15);margin-bottom:14px;">
+              monaco-community.web.app/verify/<b style="color:#34d399;">IL-A4K2-9X3M</b>
+            </div>
+            <ol style="font-size:13px;line-height:1.9;opacity:0.9;">
+              <li>Aparece aviso de privacidad</li>
+              <li>Cliente acepta → "I Understand"</li>
+              <li>Sistema verifica el código en tiempo real</li>
+              <li>Muestra <b style="color:#6ee7b7;">VERIFIED AUTHENTIC</b></li>
+              <li>Cliente puede descargar el COA</li>
+            </ol>
+          </div>
+          <div class="verify-card">
+            <div class="verify-hero">
+              <div class="shield">🛡️</div>
+              <h3>VERIFIED AUTHENTIC</h3>
+              <div class="sub">Independently verified product</div>
+            </div>
+            <div class="verify-body">
+              <div class="pill"><b style="color:#0f172a;">Tesamorelin 10mg</b></div>
+              <div class="row2"><span style="color:#64748b;">Pureza</span><b style="color:#047857;">99.253%</b></div>
+              <div class="row2"><span style="color:#64748b;">Lote</span><span style="font-family:ui-monospace,monospace;">SEMX-0011-02</span></div>
+              <div class="row2"><span style="color:#64748b;">Estado</span><span style="background:#d1fae5;color:#065f46;padding:2px 10px;border-radius:99px;font-size:10px;font-weight:700;">● PASS</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12. Anti-falsificación -->
+    <div class="slide" data-narration="Una última cosa muy importante: la protección anti falsificación. Si alguien intenta escanear un código que ya fue verificado antes, el sistema lo detecta y muestra una alerta naranja que dice YA ESCANEADO, indicando posible falsificación. Tú lo ves marcado en rojo en tu panel de admin, con la cantidad de veces que se escaneó. Y desde ahí puedes anular el código para invalidarlo. Eso es todo. Tu sistema está listo para operar. Si tienes dudas, escríbeme. Hasta la próxima.">
+      <div>
+        <div class="badge">Bonus — Anti-falsificación</div>
+        <h2 style="text-align:center;">🚨 Detección automática de copias</h2>
+        <div class="grid-2">
+          <div>
+            <div class="feat"><div class="ico">🔔</div><h3>Alerta visual al cliente</h3><p>Pantalla naranja "YA ESCANEADO" si el QR fue verificado antes</p></div>
+            <div class="feat"><div class="ico">📊</div><h3>Registro en tu admin</h3><p>El código se marca como flagged con cantidad de scans, IPs y timestamps</p></div>
+            <div class="feat"><div class="ico">🚫</div><h3>Anulación manual</h3><p>Botón "Void" para invalidar el código si detectas problema</p></div>
+            <p class="lead" style="margin-top:18px;font-size:15px;text-align:center;">
+              <b>Listo. Tu sistema está operativo. 🎉</b>
+            </p>
+          </div>
+          <div class="verify-card">
+            <div class="verify-hero alert">
+              <div class="shield">⚠️</div>
+              <h3>YA ESCANEADO</h3>
+              <div class="sub">Este código ya fue verificado</div>
+            </div>
+            <div class="verify-body">
+              <div class="pill" style="background:#fee2e2;color:#991b1b;"><b>Posible falsificación</b></div>
+              <div class="row2"><span style="color:#64748b;">Escaneo #</span><b>3</b></div>
+              <div class="row2"><span style="color:#64748b;">Estado</span><span style="background:#fee2e2;color:#991b1b;padding:2px 10px;border-radius:99px;font-size:10px;font-weight:700;">⚠ FLAGGED</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="caption" id="caption">Listo para empezar.</div>
+  </div>
+
+  <div class="ctrls">
+    <div style="display:flex;gap:8px;">
+      <button class="cbtn" id="prev">◀ Atrás</button>
+      <button class="cbtn play" id="play">▶ Reproducir tutorial</button>
+      <button class="cbtn" id="next">Siguiente ▶</button>
+      <button class="cbtn rec" id="rec">🎬 Grabar video</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end;">
+      <span class="err hidden" id="err"></span>
+      <span class="step-label" id="step-info">Listo. Click "▶ Reproducir tutorial" para empezar.</span>
+    </div>
+  </div>
+</div>
+
+<audio id="player"></audio>
+
+<script>
+const API_KEY = 'AIzaSyD7cE4FKfP6NflltMkHxGNuBg7mRIGDjqM';
+// Gemini TTS endpoint (works with same Gemini API key, no Cloud TTS needed)
+const TTS_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
+const VOICE = 'Aoede'; // natural Spanish female voice
+
+const slides = Array.from(document.querySelectorAll('.slide'));
+const player = document.getElementById('player');
+const caption = document.getElementById('caption');
+const stepLabel = document.getElementById('step-label');
+const stepInfo = document.getElementById('step-info');
+const progressBar = document.getElementById('progress-bar');
+const errBox = document.getElementById('err');
+
+let current = 0;
+let playing = false;
+const audioCache = {};
+
+function showSlide(i) {
+  slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+  current = i;
+  caption.textContent = slides[i].dataset.narration || '';
+  stepLabel.textContent = `Diapositiva ${i+1} / ${slides.length}`;
+  progressBar.style.width = `${((i+1) / slides.length) * 100}%`;
+}
+
+// Wrap raw 24kHz PCM (signed 16-bit mono) in WAV header so <audio> can play it
+function pcmToWavURL(b64, sampleRate=24000) {
+  const bin = atob(b64);
+  const pcm = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) pcm[i] = bin.charCodeAt(i);
+  const dataSize = pcm.length;
+  const buf = new ArrayBuffer(44 + dataSize);
+  const v = new DataView(buf);
+  // RIFF header
+  v.setUint32(0, 0x52494646, false);              // "RIFF"
+  v.setUint32(4, 36 + dataSize, true);
+  v.setUint32(8, 0x57415645, false);              // "WAVE"
+  v.setUint32(12, 0x666d7420, false);             // "fmt "
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);                       // PCM
+  v.setUint16(22, 1, true);                       // mono
+  v.setUint32(24, sampleRate, true);
+  v.setUint32(28, sampleRate * 2, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  v.setUint32(36, 0x64617461, false);             // "data"
+  v.setUint32(40, dataSize, true);
+  new Uint8Array(buf, 44).set(pcm);
+  const blob = new Blob([buf], { type: 'audio/wav' });
+  return URL.createObjectURL(blob);
+}
+
+async function fetchTTS(text) {
+  if (audioCache[text]) return audioCache[text];
+  const body = {
+    contents: [{ parts: [{ text }] }],
+    generationConfig: {
+      responseModalities: ["AUDIO"],
+      speechConfig: {
+        voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } }
+      }
+    }
+  };
+  const res = await fetch(TTS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const e = await res.text();
+    throw new Error(`Gemini TTS ${res.status}: ${e.slice(0,200)}`);
+  }
+  const data = await res.json();
+  const inline = data?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData;
+  if (!inline?.data) throw new Error('No audio in response');
+  // Detect sample rate from mimeType (e.g. "audio/L16;codec=pcm;rate=24000")
+  const m = (inline.mimeType || '').match(/rate=(\d+)/);
+  const sr = m ? parseInt(m[1], 10) : 24000;
+  const url = pcmToWavURL(inline.data, sr);
+  audioCache[text] = url;
+  return url;
+}
+
+async function playSlide(i) {
+  showSlide(i);
+  const text = slides[i].dataset.narration;
+  if (!text) return;
+  stepInfo.textContent = '🔊 Cargando voz...';
+  errBox.classList.add('hidden');
+  try {
+    const url = await fetchTTS(text);
+    player.src = url;
+    await player.play();
+    stepInfo.textContent = `🔊 Reproduciendo ${i+1}/${slides.length}...`;
+  } catch (e) {
+    errBox.textContent = e.message;
+    errBox.classList.remove('hidden');
+    stepInfo.textContent = 'Voz desactivada (lee subtítulos)';
+    // Still auto-advance after a fixed time so the show goes on
+    setTimeout(() => { if (playing && current === i) onSlideEnded(); }, 5500);
+  }
+}
+
+function onSlideEnded() {
+  if (playing && current < slides.length - 1) {
+    setTimeout(() => playSlide(current + 1), 700);
+  } else if (current >= slides.length - 1) {
+    playing = false;
+    document.getElementById('play').textContent = '▶ Reproducir tutorial';
+    stepInfo.textContent = '✓ Tutorial completado';
+    if (recording) stopRecording();
+  }
+}
+
+document.getElementById('prev').onclick = () => {
+  if (current > 0) playing ? playSlide(current - 1) : showSlide(current - 1);
+};
+document.getElementById('next').onclick = () => {
+  if (current < slides.length - 1) playing ? playSlide(current + 1) : showSlide(current + 1);
+};
+document.getElementById('play').onclick = () => {
+  playing = !playing;
+  document.getElementById('play').textContent = playing ? '⏸ Pausar' : '▶ Reproducir tutorial';
+  if (playing) playSlide(current);
+  else player.pause();
+};
+player.onended = onSlideEnded;
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight') document.getElementById('next').click();
+  if (e.key === 'ArrowLeft') document.getElementById('prev').click();
+  if (e.key === ' ') { e.preventDefault(); document.getElementById('play').click(); }
+});
+
+// ─────────────────────────────────────────────────────────────
+// SCREEN RECORDING (captura la pestaña con audio y guarda video)
+// ─────────────────────────────────────────────────────────────
+let mediaRecorder = null;
+let chunks = [];
+let recording = false;
+
+async function startRecording() {
+  try {
+    stepInfo.textContent = '📹 Selecciona "Esta pestaña" y marca "Compartir audio"...';
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 30 },
+      audio: true
+    });
+    // Pick a supported mime type, prefer mp4 if available
+    const candidates = [
+      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm'
+    ];
+    const mime = candidates.find(c => MediaRecorder.isTypeSupported(c)) || '';
+    mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 4_000_000 } : undefined);
+    chunks = [];
+    mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const ext = (mediaRecorder.mimeType || '').includes('mp4') ? 'mp4' : 'webm';
+      const blob = new Blob(chunks, { type: mediaRecorder.mimeType || `video/${ext}` });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `tutorial-illium.${ext}`;
+      document.body.appendChild(a); a.click(); a.remove();
+      stepInfo.textContent = `✓ Video guardado como tutorial-illium.${ext}`;
+      stream.getTracks().forEach(t => t.stop());
+    };
+    // Stop if user cancels share
+    stream.getVideoTracks()[0].onended = () => { if (recording) stopRecording(); };
+
+    mediaRecorder.start(1000);
+    recording = true;
+    document.getElementById('rec').textContent = '⏹ Detener';
+    document.getElementById('rec').classList.add('recording');
+    stepInfo.textContent = '🔴 Grabando... el tutorial empezará automáticamente.';
+
+    // Start the show from slide 1
+    current = 0; showSlide(0);
+    playing = true;
+    document.getElementById('play').textContent = '⏸ Pausar';
+    setTimeout(() => playSlide(0), 800);
+  } catch (e) {
+    errBox.textContent = 'Grabación cancelada o no permitida: ' + e.message;
+    errBox.classList.remove('hidden');
+    stepInfo.textContent = 'Grabación cancelada.';
+  }
+}
+
+function stopRecording() {
+  if (!recording) return;
+  recording = false;
+  document.getElementById('rec').textContent = '🎬 Grabar video';
+  document.getElementById('rec').classList.remove('recording');
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+}
+
+document.getElementById('rec').onclick = () => {
+  if (recording) stopRecording();
+  else startRecording();
+};
+
+if (location.search.includes('capture=1')) document.body.classList.add('capture');
+window.showSlide = showSlide;
+showSlide(0);
+</script>
+</body>
+</html>
