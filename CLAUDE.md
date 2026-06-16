@@ -197,6 +197,18 @@ Al generar el protocolo de un pedido, la IA recibe **por cada producto** (de Fir
 
 ## 10. Historial de cambios recientes
 
+### 2026-06-16 (hash `index-PNxO-N9q.js`) — Fidelidad estricta del protocolo IA
+- **Problema:** el generador inventaba/derivaba cifras no provistas (dosis como
+  0.5mg, conversiones a mL "0.25mg=0.025mL", calibre de jeringa, incrementos de
+  titulación).
+- **Fix** (`src/lib/orderProtocol.ts` + `src/lib/groq.ts`): prompt del sistema (ES/EN)
+  reescrito con **FIDELIDAD ABSOLUTA** (usar verbatim, prohibido inventar/aproximar/
+  derivar, mantener rangos exactos, `[corchetes]` si falta dato); campos del producto
+  marcados como **FUENTE AUTORITATIVA**; **reglas obligatorias inyectadas en el mensaje
+  de cada pedido** (aplican aunque haya prompt custom en `settings/general`);
+  **temperatura del modelo = 0.1** (salida determinista). REGLA: cada producto trae su
+  info en "Nota de dosis" + "📋 Protocolo de uso"; la IA debe respetarla al pie de la letra.
+
 ### 2026-06-16 (hash `index-Bvxja6rH.js`)
 - **Detalle expandible "Ventas por vendedor"** (`AdminFinance.tsx`,
   `VendorBreakdownCard`): cada tarjeta despliega TODAS las ventas del vendedor (fecha,
