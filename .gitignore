@@ -58,3 +58,7 @@ ui-debug.log
 
 # CI workflow (requiere scope workflow para subirse vía gh)
 .github/workflows/
+
+# Claves de publicacion (script publicar.sh)
+.env.deploy
+!.env.deploy.example

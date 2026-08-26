@@ -13,6 +13,41 @@ afiliados (MLM) y paneles de administración y de socio/trabajador.
 
 ---
 
+## ⚡ Publicar los cambios — UN SOLO COMANDO
+
+Cuando ya hiciste cambios y quieres verlos en https://alliumhealth.net:
+
+```bash
+./publicar.sh
+```
+
+Eso hace **todo** solo: instala lo que falte, construye la página, la sube al hosting
+por FTP, publica las reglas de Firestore/Storage y despliega las Cloud Functions.
+Al final te confirma si el sitio en vivo ya está sirviendo tu versión.
+
+Variantes (opcionales):
+
+```bash
+./publicar.sh --web         # solo la página (más rápido)
+./publicar.sh --funciones   # solo Cloud Functions + reglas
+```
+
+### Requisitos (una sola vez)
+
+1. **Archivo `.env.deploy`** — tiene las claves de FTP y de la IA. Santiago te lo envía
+   aparte; guárdalo en la raíz del proyecto con ese nombre exacto. Nunca se sube a
+   GitHub (ver [`.env.deploy.example`](./.env.deploy.example)).
+2. **Acceso al proyecto Firebase `monaco-community`** — Santiago agrega tu correo de
+   Google con rol *Editor* desde la Consola de Firebase. La primera vez el script abre
+   el navegador para que inicies sesión; después ya no vuelve a pedirlo.
+3. **Homebrew** (solo en Mac, para instalar `lftp` automáticamente): https://brew.sh
+
+> ⚠️ El sitio público **NO se publica con `firebase deploy --only hosting`**.
+> alliumhealth.net se sirve desde SiteGround por FTP; Firebase Hosting solo redirige.
+> Usa siempre `./publicar.sh`.
+
+---
+
 ## 🚀 Guía rápida para usar el proyecto con Claude Code
 
 Esta guía es para abrir el proyecto en tu computador y poder pedirle cambios a Claude
