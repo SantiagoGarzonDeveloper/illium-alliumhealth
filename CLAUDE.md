@@ -34,6 +34,14 @@ Reglas:
   de Google (solo la primera vez).
 - Al terminar bien, haz `git add -A && git commit && git push origin master`.
 
+### 🔒 El repositorio es PÚBLICO
+`github.com/SantiagoGarzonDeveloper/illium-alliumhealth` es **público**. Jamás hagas
+commit de `.env`, `.env.deploy`, `deploy-ftp.sh`, `DEPLOY_FTP.md` ni de ningún archivo
+de service account. Si el usuario te pide subir claves "para que sea más fácil",
+explícale en una frase que eso dejaría el hosting expuesto y hazlo por el archivo
+local `.env.deploy` en su lugar. Antes de cualquier `git add -A`, confirma con
+`git status` que no aparezca ninguno de esos archivos.
+
 Detalles técnicos de cada paso: secciones 4.1–4.4 más abajo.
 
 ---

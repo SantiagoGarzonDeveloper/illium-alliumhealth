@@ -62,3 +62,4 @@ ui-debug.log
 # Claves de publicacion (script publicar.sh)
 .env.deploy
 !.env.deploy.example
+MENSAJE-PARA-ENVIARLE.txt
