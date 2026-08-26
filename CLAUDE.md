@@ -7,6 +7,37 @@
 
 ---
 
+## 0. ⚡ CÓMO PUBLICAR (leer siempre antes de tocar nada)
+
+**El usuario de este proyecto NO es técnico.** No le pidas que ejecute comandos en su
+terminal, no le pidas tokens ni claves, no le pegues logs. Haz tú el trabajo y
+respóndele en español sencillo.
+
+Cuando diga cualquier cosa parecida a *"publica"*, *"sube los cambios"*, *"ponlo en la
+página"*, *"que se vea en el sitio"*, *"ya quedó, súbelo"* → **ejecuta directamente**:
+
+```bash
+./publicar.sh
+```
+
+Ese script hace TODO: instala dependencias, construye, sube `dist/` por FTP a
+SiteGround, publica las reglas de Firestore/Storage, despliega las Cloud Functions y
+verifica contra el sitio en vivo. Variantes: `--web` (solo la página) y `--funciones`.
+
+Reglas:
+- ❌ **NUNCA** `firebase deploy --only hosting` — el sitio público se sirve desde
+  SiteGround por FTP; ese comando no cambia nada en alliumhealth.net.
+- Si falta `.env.deploy`, dile que se lo pida a Santiago y que lo guarde en la carpeta
+  del proyecto. No intentes reconstruirlo ni le pidas las claves por chat.
+- Si el build falla, **arregla tú el código** y reintenta; no le traslades el error.
+- Si Firebase pide login, avísale que se abrirá el navegador y que entre con su cuenta
+  de Google (solo la primera vez).
+- Al terminar bien, haz `git add -A && git commit && git push origin master`.
+
+Detalles técnicos de cada paso: secciones 4.1–4.4 más abajo.
+
+---
+
 ## 1. Qué es el proyecto
 
 **ILLIUM** — ecommerce de **compuestos de investigación / péptidos** (marca ILLIUM,
