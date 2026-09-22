@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { db, cloudFunctions } from '@/lib/firebase';
+import { llamarApi } from '@/lib/api';
+import { db } from '@/lib/firebase';
 import { useToastStore } from '@/store';
 import { useI18n } from '@/i18n/I18nContext';
 import { Button } from '@/components/ui/button';
@@ -283,12 +283,11 @@ export function InvoiceModal({ open, onClose, sale }: { open: boolean; onClose: 
     setSending(true);
     setError(null);
     try {
-      const fn = httpsCallable(cloudFunctions, 'sendInvoiceEmail');
-      await fn({
+      await llamarApi('factura', {
         to,
         subject: `${es ? 'Factura' : 'Invoice'} ${built.invoiceNo}${company?.name ? ` — ${company.name}` : ''}`,
         html: fullDoc(built.html, built.invoiceNo),
-      });
+      }, true);
       showToast(es ? `✓ Factura enviada a ${to}` : `✓ Invoice sent to ${to}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error';

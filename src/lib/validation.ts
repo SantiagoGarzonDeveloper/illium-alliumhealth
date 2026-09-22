@@ -1,5 +1,4 @@
-import { httpsCallable } from 'firebase/functions';
-import { cloudFunctions } from '@/lib/firebase';
+import { llamarApi } from '@/lib/api';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 export type EmailValidationResult = {
@@ -16,12 +15,10 @@ export async function validateEmailRemote(email: string): Promise<EmailValidatio
     return { valid: false, reason: 'bad_format' };
   }
   try {
-    const fn = httpsCallable(cloudFunctions, 'validateEmail');
-    const res = await fn({ email: trimmed });
-    return (res.data as EmailValidationResult) || { valid: true };
+    return await llamarApi<EmailValidationResult>('validar-correo', { email: trimmed });
   } catch (e) {
-    console.warn('validateEmail fallback', e);
-    // If the function is down, accept (don't block the user)
+    console.warn('validar-correo no disponible', e);
+    // Si el servidor no responde, no se bloquea al usuario.
     return { valid: true, reason: 'server_unavailable' };
   }
 }
@@ -75,29 +72,17 @@ export function validatePhone(
 /** Request OTP code via email. */
 export async function requestEmailOTP(email: string, locale: 'es' | 'en'): Promise<{ sent: boolean; reason?: string; message?: string; devCode?: string }> {
   try {
-    const fn = httpsCallable(cloudFunctions, 'requestEmailOTP');
-    const res = await fn({ email, locale });
-    return res.data as { sent: boolean; reason?: string; devCode?: string };
+    return await llamarApi<{ sent: boolean; reason?: string }>('otp-crear', { email, locale });
   } catch (e) {
-    const err = e as { code?: string; message?: string; details?: unknown };
-    const msg = err?.message || '';
-    // Extract the Resend-specific reason if present
-    if (msg.includes('resend_test_domain_restriction')) {
-      return { sent: false, reason: 'resend_test_domain_restriction', message: msg };
-    }
-    if (msg.includes('resend_error')) {
-      return { sent: false, reason: 'resend_error', message: msg };
-    }
-    return { sent: false, reason: err?.code || 'error', message: msg };
+    const msg = e instanceof Error ? e.message : 'error';
+    return { sent: false, reason: msg, message: msg };
   }
 }
 
 /** Verify OTP code. */
 export async function verifyEmailOTP(email: string, code: string): Promise<{ valid: boolean; reason?: string; attemptsLeft?: number }> {
   try {
-    const fn = httpsCallable(cloudFunctions, 'verifyEmailOTP');
-    const res = await fn({ email, code });
-    return res.data as { valid: boolean; reason?: string; attemptsLeft?: number };
+    return await llamarApi<{ valid: boolean; reason?: string; attemptsLeft?: number }>('otp-verificar', { email, code });
   } catch {
     return { valid: false, reason: 'error' };
   }

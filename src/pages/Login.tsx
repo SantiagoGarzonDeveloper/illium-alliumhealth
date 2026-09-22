@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CountryPhoneInput } from '@/components/ui/country-phone-input';
-import { auth, cloudFunctions, db } from '@/lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, limit, query, setDoc, where } from 'firebase/firestore';
 import { Users, ShoppingBag, ArrowLeft, ArrowRight, Check, AlertCircle, Globe, KeyRound, Mail, X } from 'lucide-react';
@@ -231,19 +230,10 @@ export function Login() {
     setForgotSending(true);
     setForgotMsg(null);
     try {
-      // Prefer the Illium-branded email sent via our Cloud Function (Resend).
-      // Falls back silently to the default Firebase email if the function fails.
-      let usedCustom = false;
-      try {
-        const fn = httpsCallable(cloudFunctions, 'sendCustomPasswordReset');
-        await fn({ email: target, locale });
-        usedCustom = true;
-      } catch (cfErr) {
-        console.warn('sendCustomPasswordReset CF failed, falling back to Firebase:', cfErr);
-      }
-      if (!usedCustom) {
-        await sendPasswordResetEmail(auth, target);
-      }
+      // El correo de restablecer contraseña lo envía Firebase Authentication
+      // directamente: no depende de las Cloud Functions ni de ningún servicio
+      // externo, así que llega siempre.
+      await sendPasswordResetEmail(auth, target);
       setForgotMsg({
         kind: 'ok',
         text: es

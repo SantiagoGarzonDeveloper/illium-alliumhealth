@@ -16,6 +16,8 @@ import { validateEmailRemote, emailErrorMessage, validatePhone, phoneErrorMessag
 import { findCouponByCode, validateCoupon, applyCouponToTotal, incrementCouponUsage, type Coupon } from '@/lib/coupons';
 import { ShareCartButton } from '@/components/cart/ShareCartButton';
 import { markSharedCartUsed } from '@/lib/sharedCart';
+import { avisarPedidoCreado } from '@/lib/api';
+import { aplicarStockDelPedido } from '@/lib/stockPedido';
 import { StripeCardForm } from '@/components/cart/StripeCardForm';
 
 export function Cart() {
@@ -278,6 +280,29 @@ export function Cart() {
     };
   };
 
+  /**
+   * Tras guardar el pedido: descuenta inventario y manda los avisos (correo al
+   * cliente, correo a los admins y WhatsApp). Va por el servidor propio, no por
+   * las Cloud Functions.
+   */
+  const procesarPedidoNuevo = (orderId: string, order: Record<string, unknown>) => {
+    const items = (order.items as Array<{ productId?: string; name?: string; quantity?: number; price?: number }>) || [];
+    const cliente = (order.customer as { name?: string; email?: string; whatsappLocalNumber?: string }) || {};
+    void aplicarStockDelPedido(orderId, items);
+    void avisarPedidoCreado(orderId, {
+      nombre: String(cliente.name || ''),
+      email: String(cliente.email || ''),
+      whatsapp: String(cliente.whatsappLocalNumber || ''),
+      pago: String(order.paymentMethod || ''),
+      total: Number(order.total) || 0,
+      items: items.map((i) => ({
+        name: String(i.name || ''),
+        quantity: Math.max(1, Math.round(Number(i.quantity) || 1)),
+        price: Number(i.price) || 0,
+      })),
+    });
+  };
+
   /** Common post-order-creation cleanup. */
   const finishOrder = (orderId: string) => {
     setPlacedOrderId(orderId);
@@ -326,6 +351,7 @@ export function Cart() {
     try {
       const order = await buildOrderDoc('stripe', args.intentId);
       const ref = await addDoc(collection(db, 'orders'), order);
+      procesarPedidoNuevo(ref.id, order as unknown as Record<string, unknown>);
       setSuccessPaymentMode('stripe');
       finishOrder(ref.id);
     } catch (error) {
@@ -448,6 +474,7 @@ export function Cart() {
         createdAt: serverTimestamp(),
       };
       const ref = await addDoc(collection(db, 'orders'), order);
+      procesarPedidoNuevo(ref.id, order as unknown as Record<string, unknown>);
       setPlacedOrderId(ref.id);
       if (appliedCoupon) { void incrementCouponUsage(appliedCoupon.id); }
       if (sharedFrom?.shareId) { void markSharedCartUsed(sharedFrom.shareId, ref.id); }

@@ -63,3 +63,4 @@ ui-debug.log
 .env.deploy
 !.env.deploy.example
 MENSAJE-PARA-ENVIARLE.txt
+servidor-privado/config.php

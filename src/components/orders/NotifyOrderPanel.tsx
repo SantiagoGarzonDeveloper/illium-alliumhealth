@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { cloudFunctions } from '@/lib/firebase';
+import { llamarApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mail, ExternalLink, Send, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -50,17 +49,33 @@ export function NotifyOrderPanel({ orderId, order, es }: Props) {
     setFeedback(null);
     setSending(target);
     try {
-      const fn = httpsCallable<unknown, { ok: boolean; recipient: string; count: number; template: string }>(
-        cloudFunctions,
-        'notifyOrderStatus',
-      );
       const overrideEmail = target === 'customer' ? customerOverride.trim() : vendorOverride.trim();
-      const result = await fn({ orderId, target, overrideEmail: overrideEmail || undefined });
+      const destino = overrideEmail || (target === 'customer'
+        ? customerEmail
+        : String((order as { registeredByEmail?: string }).registeredByEmail || ''));
+      if (!destino) throw new Error(es ? 'No hay correo de destino' : 'No destination email');
+
+      const estado = String(
+        (order as { fulfillmentStatus?: string }).fulfillmentStatus ||
+        (order as { status?: string }).status || '',
+      );
+      const total = Number((order as { total?: number }).total || 0);
+      const html = [
+        `<p style="margin:0 0 14px;color:#475569;">${es ? 'Estado de tu pedido' : 'Your order status'} <b>${orderId.slice(0, 8)}</b>: ${estado}</p>`,
+        tracking ? `<p style="margin:0 0 14px;"><b>${es ? 'Guía' : 'Tracking'}:</b> ${tracking}<br><a href="${uspsLink(tracking)}">${es ? 'Seguir el envío' : 'Track shipment'}</a></p>` : '',
+        `<p style="margin:0;"><b>Total:</b> $${total.toFixed(2)}</p>`,
+      ].join('');
+
+      const result = await llamarApi<{ recipient: string; template: string }>('notificar-pedido', {
+        to: destino,
+        subject: `ILLIUM · ${es ? 'Tu pedido' : 'Your order'} ${orderId.slice(0, 8)}`,
+        html,
+      }, true);
       setFeedback({
         kind: 'ok',
         msg: es
-          ? `✓ Correo enviado a ${result.data.recipient} (${result.data.template})`
-          : `✓ Email sent to ${result.data.recipient} (${result.data.template})`,
+          ? `✓ Correo enviado a ${result.recipient}`
+          : `✓ Email sent to ${result.recipient}`,
       });
       if (target === 'customer') setCustomerOverride('');
       else setVendorOverride('');

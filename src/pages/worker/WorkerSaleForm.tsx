@@ -8,6 +8,8 @@ import { getEffectivePrice } from '@/lib/pricing';
 import { findCouponByCode, validateCoupon, applyCouponToTotal, incrementCouponUsage, type Coupon } from '@/lib/coupons';
 import { buildNewOrderCommissionFields } from '@/lib/orderCommission';
 import { buildSharedCartPayload, createSharedCart } from '@/lib/sharedCart';
+import { avisarPedidoCreado } from '@/lib/api';
+import { aplicarStockDelPedido } from '@/lib/stockPedido';
 import type { CartItem } from '@/store';
 
 type Product = {
@@ -219,6 +221,18 @@ export function WorkerSaleForm({ uid, email, locale, showToast }: Props) {
       createdAt: serverTimestamp(),
     });
     if (appliedCoupon) void incrementCouponUsage(appliedCoupon.id);
+
+    // Inventario y avisos, por el servidor propio (las Cloud Functions no responden).
+    void aplicarStockDelPedido(ref.id, cleanLines);
+    void avisarPedidoCreado(ref.id, {
+      nombre: customerName.trim(),
+      email: customerEmail.trim().toLowerCase(),
+      whatsapp: customerWhatsApp.replace(/\D/g, ''),
+      pago: paymentMethod,
+      total,
+      items: cleanLines.map((l) => ({ name: l.name, quantity: l.quantity, price: l.price })),
+    });
+
     return ref.id;
   }
 
