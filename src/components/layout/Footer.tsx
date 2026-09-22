@@ -64,11 +64,6 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/quiz" className="hover:text-white transition-colors duration-200">
-                  {t('footer.protocolFinder')}
-                </Link>
-              </li>
-              <li>
                 <Link to="/docs" className="hover:text-white transition-colors duration-200">
                   Docs
                 </Link>

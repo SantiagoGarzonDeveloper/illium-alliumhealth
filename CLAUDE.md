@@ -46,6 +46,69 @@ Detalles técnicos de cada paso: secciones 4.1–4.4 más abajo.
 
 ---
 
+## 0.1 ⚠️ LA FACTURACIÓN DE FIREBASE ESTÁ CERRADA (22-sep-2026) — LEER
+
+La cuenta de facturación del proyecto `monaco-community` está **cerrada**. Consecuencias
+reales, comprobadas:
+
+- **Firebase Storage está muerto**: toda descarga devuelve `HTTP 402 "The billing
+  account for the owning project is disabled in state closed"`. Por eso las fotos de
+  producto dejaron de verse. Ni siquiera el service account puede descargar (403).
+- **Las Cloud Functions están caídas**: responden `HTTP 503`. No se pueden redesplegar
+  (`Error: ...secretmanager... 403, This API method requires billing`).
+  → Correos, WhatsApp, Stripe y OTP **no funcionan** hasta que se reactive la facturación.
+- **Firestore SÍ funciona** (plan Spark) y **el hosting de SiteGround también**.
+
+### Cómo se resolvió lo de las imágenes
+**Todos los medios viven ahora en el propio dominio**, no en Firebase Storage:
+- Imágenes de producto: `public/product-images/*.png` → `https://alliumhealth.net/product-images/…`
+- Categorías: `public/category-images/*.png` · Logos, `hero-video.mp4` y `zelle-qr.png`: en `public/`
+- Las URLs en Firestore (`products.img`, `settings/general.{logoUrl,logoUrlDark,heroVideoUrl,zelleQrUrl,categories[].imageUrl}`)
+  se reescribieron a `https://alliumhealth.net/...`.
+- **Subidas nuevas desde el panel:** ya NO usan Storage. Usan `public/subir.php`
+  (endpoint propio en SiteGround) mediante `src/lib/uploadMedia.ts`; los archivos quedan
+  en `https://alliumhealth.net/medios/<carpeta>/<archivo>`. Afecta a: foto de producto,
+  QR de Zelle, imagen de categoría, COA (PDF) y foto de perfil.
+  El token del endpoint está en `subir.php` y en `uploadMedia.ts` (es un token de
+  cliente, no un secreto de servidor: solo evita subidas anónimas casuales).
+- `isDeadStorageUrl()` (en `uploadMedia.ts`) detecta URLs viejas de Storage y las
+  sustituye por una imagen de respaldo, para que nunca se vea una imagen rota.
+
+### Verificación de QR sin backend
+`VerifyAuthenticity.tsx` ya **no llama a la Cloud Function**: lee `authCodes/{code}`
+directamente de Firestore (las reglas permiten lectura pública). Así el QR verifica
+aunque las funciones estén caídas. **Escaneos ILIMITADOS**: ningún código se bloquea ni
+se marca como sospechoso por escanearse varias veces. Efecto secundario: el contador de
+escaneos del panel ya no sube (la función que lo incrementaba está caída).
+
+---
+
+## 0.2 Cambios pedidos por el cliente el 22-sep-2026 (todos aplicados y publicados)
+
+1. **Fotos de producto** — arregladas migrando todos los medios al dominio (ver §0.1).
+2. **Cuestionario eliminado** — fuera del menú, del pie, de la portada y de la ficha de
+   producto. `/quiz` redirige a `/shop` (los enlaces viejos no dan 404). `Quiz.tsx` sigue
+   en el repo pero ya no se enruta.
+3. **"Consulting" quitado** del menú y de la portada (la ruta `/consulta` sigue viva por
+   si hay enlaces antiguos, pero no se enlaza desde ningún sitio).
+4. **QR sin restricciones** (ver §0.1).
+5. **Sin referencias de uso humano**: se reescribieron los textos de resultado humano
+   («pasión por el potencial humano», «pérdida de grasa», «recuperación muscular»,
+   «clientes satisfechos») a lenguaje de vías de investigación, y se quitó la línea
+   «Indicado para: male/female» del protocolo. **Los avisos legales de "NO para consumo
+   humano" se mantienen a propósito** — son los que dejan claro que es solo laboratorio.
+6. **Catálogo completo en la portada**: sección `#catalogo` con los 23 productos y
+   filtros por categoría, sin salir de la home.
+7. **Best-sellers al final** de la portada.
+8. **Portal del socio: solo Zelle o link de pago** (`WorkerSaleForm.tsx`). Se quitaron
+   efectivo, transferencia, tarjeta y «otro». El link de pago reutiliza el sistema de
+   carritos compartidos (`/c/:id`), conserva la comisión del vendedor y se puede copiar
+   o mandar por WhatsApp.
+9. **QR copiable/descargable como imagen** en Admin → Autenticidad: botones «Copiar QR»
+   (al portapapeles, PNG 1024px) y «PNG» (descarga) en cada código, para las etiquetas.
+
+---
+
 ## 1. Qué es el proyecto
 
 **ILLIUM** — ecommerce de **compuestos de investigación / péptidos** (marca ILLIUM,

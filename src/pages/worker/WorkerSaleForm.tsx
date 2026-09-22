@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { getEffectivePrice } from '@/lib/pricing';
 import { findCouponByCode, validateCoupon, applyCouponToTotal, incrementCouponUsage, type Coupon } from '@/lib/coupons';
 import { buildNewOrderCommissionFields } from '@/lib/orderCommission';
-import { StripeCardForm } from '@/components/cart/StripeCardForm';
+import { buildSharedCartPayload, createSharedCart } from '@/lib/sharedCart';
 import type { CartItem } from '@/store';
 
 type Product = {
@@ -33,8 +33,9 @@ type Props = {
  * Creates an order doc with channel='partner_direct' so it shows up in the
  * admin Orders tab and in the worker's own commission rollup automatically.
  *
- * Supports manual payment methods (cash/Zelle/transfer) AND charging a card
- * on the spot via Stripe when "Card" is selected.
+ * Dos formas de cobro, y solo dos: **Zelle** (el cliente paga al número de
+ * Zelle y la venta queda pendiente de confirmar) o **link de pago** (se le
+ * manda al cliente un enlace con el carrito ya armado para que pague online).
  */
 export function WorkerSaleForm({ uid, email, locale, showToast }: Props) {
   const es = locale === 'es';
@@ -43,7 +44,8 @@ export function WorkerSaleForm({ uid, email, locale, showToast }: Props) {
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerWhatsApp, setCustomerWhatsApp] = useState('');
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('cash');
+  /** Solo dos métodos: 'zelle' o 'link' (mandarle un link de pago al cliente). */
+  const [paymentMethod, setPaymentMethod] = useState<'zelle' | 'link'>('zelle');
   const [lines, setLines] = useState<Line[]>([{ name: '', price: 0, quantity: 1 }]);
   const [saving, setSaving] = useState(false);
 
@@ -53,11 +55,11 @@ export function WorkerSaleForm({ uid, email, locale, showToast }: Props) {
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
 
-  // Stripe card-on-the-spot support.
-  const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
-  const [cardPaymentsEnabled, setCardPaymentsEnabled] = useState(false);
-  /** When set, we're in the secure card-payment step with this frozen snapshot. */
-  const [cardCheckout, setCardCheckout] = useState(false);
+  // Link de pago generado para el cliente.
+  const [payLink, setPayLink] = useState('');
+  const [linkLoading, setLinkLoading] = useState(false);
+  /** Número de Zelle configurado en ajustes, para mostrárselo al vendedor. */
+  const [zelleNumber, setZelleNumber] = useState('');
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'products'), (snap) => {
@@ -78,17 +80,16 @@ export function WorkerSaleForm({ uid, email, locale, showToast }: Props) {
     return () => unsub();
   }, []);
 
-  // Load Stripe config so the partner can charge a card directly.
+  // Número de Zelle configurado en el panel (se le muestra al vendedor).
   useEffect(() => {
     void (async () => {
       try {
         const snap = await getDoc(doc(db, 'settings', 'general'));
         const data = snap.exists() ? snap.data() : {};
-        setCardPaymentsEnabled(Boolean(data.cardPaymentsEnabled));
-        if (typeof data.stripePublishableKey === 'string' && data.stripePublishableKey.trim().startsWith('pk_')) {
-          setStripePublishableKey(data.stripePublishableKey.trim());
+        if (typeof data.zelleNumber === 'string' && data.zelleNumber.trim()) {
+          setZelleNumber(data.zelleNumber.trim());
         }
-      } catch { /* ignore — card option just won't render */ }
+      } catch { /* si falla, simplemente no se muestra el número */ }
     })();
   }, []);
 
@@ -103,7 +104,7 @@ export function WorkerSaleForm({ uid, email, locale, showToast }: Props) {
     () => lines.filter((l) => l.name.trim() && l.quantity > 0),
     [lines]
   );
-  const cardReady = customerName.trim().length > 0 && validLines.length > 0 && total > 0;
+  const saleReady = customerName.trim().length > 0 && validLines.length > 0 && total > 0;
 
   function pickProduct(idx: number, productId: string) {
     const p = products.find((x) => x.id === productId);
@@ -159,14 +160,14 @@ export function WorkerSaleForm({ uid, email, locale, showToast }: Props) {
     setNotes('');
     setLines([{ name: '', price: 0, quantity: 1 }]);
     removeCoupon();
-    setCardCheckout(false);
+    setPayLink('');
   }
 
   /**
-   * Create the order doc. paymentMode 'manual' → status pending with the chosen
-   * method. 'stripe' → status paid (card already captured) with the intent id.
+   * Crea la orden. Siempre queda en 'pending': tanto con Zelle como con link de
+   * pago, el dinero se confirma después (el admin la marca como pagada).
    */
-  async function createSaleOrder(paymentMode: 'manual' | 'stripe', stripeIntentId?: string) {
+  async function createSaleOrder() {
     const cleanLines = validLines.map((l) => ({
       ...(l.productId ? { productId: l.productId } : {}),
       name: l.name.trim(),
@@ -198,13 +199,13 @@ export function WorkerSaleForm({ uid, email, locale, showToast }: Props) {
       couponDiscount: Math.round(couponDiscount * 100) / 100,
       total,
       ...commission,
-      status: paymentMode === 'stripe' ? 'paid' : 'pending',
+      status: 'pending',
       fulfillmentStatus: 'unfulfilled',
       channel: 'partner_direct',
       registeredByUid: uid,
       registeredByEmail: email,
-      paymentMethod: paymentMode === 'stripe' ? 'stripe' : paymentMethod,
-      stripePaymentIntentId: stripeIntentId || null,
+      paymentMethod,
+      stripePaymentIntentId: null,
       checkoutLocale: locale,
       referrerId: uid,
       uplineReferrerId,
@@ -232,7 +233,7 @@ export function WorkerSaleForm({ uid, email, locale, showToast }: Props) {
     }
     setSaving(true);
     try {
-      await createSaleOrder('manual');
+      await createSaleOrder();
       showToast(es ? 'Venta registrada' : 'Sale registered');
       resetForm();
     } catch (e) {
@@ -243,22 +244,50 @@ export function WorkerSaleForm({ uid, email, locale, showToast }: Props) {
     }
   }
 
-  async function onCardPaid(intentId: string) {
-    setSaving(true);
+  /**
+   * Genera el link de pago: congela el carrito de esta venta en un enlace que
+   * se le manda al cliente para que pague en la web (el vendedor queda como
+   * referido, así la comisión se respeta).
+   */
+  async function generatePaymentLink() {
+    if (!saleReady) {
+      showToast(es ? 'Agrega cliente y productos primero' : 'Add customer and items first');
+      return;
+    }
+    setLinkLoading(true);
     try {
-      await createSaleOrder('stripe', intentId);
-      showToast(es ? '¡Pago cobrado y venta registrada!' : 'Payment captured and sale registered!');
-      resetForm();
+      const cart: CartItem[] = validLines.map((l) => ({
+        product: {
+          id: l.productId || '',
+          name: l.name.trim(),
+          description: '',
+          price: Math.max(0, Number(l.price) || 0),
+          stock: 999,
+          category: '',
+          img: '',
+        },
+        quantity: Math.max(1, Math.round(l.quantity)),
+      }));
+      const payload = buildSharedCartPayload({
+        cart,
+        appliedCoupon,
+        couponDiscountAmount: couponDiscount,
+        referredBy: { uid, email, displayName: email.split('@')[0], role: 'worker' },
+        note: customerName.trim() ? `Venta de ${customerName.trim()}` : '',
+      });
+      const id = await createSharedCart(payload);
+      const url = `${window.location.origin}/c/${id}`;
+      setPayLink(url);
+      showToast(es ? 'Link de pago generado' : 'Payment link generated');
     } catch (e) {
       console.error(e);
-      showToast(es ? 'Pago cobrado pero falló al guardar la venta. Avisa al admin.' : 'Payment captured but saving the sale failed. Notify admin.');
+      showToast(es ? 'No se pudo generar el link de pago' : 'Could not generate the payment link');
     } finally {
-      setSaving(false);
+      setLinkLoading(false);
     }
   }
 
-  const isCard = paymentMethod === 'card';
-  const stripeAvailable = cardPaymentsEnabled && Boolean(stripePublishableKey);
+  const isLink = paymentMethod === 'link';
 
   return (
     <Card>
@@ -290,13 +319,10 @@ export function WorkerSaleForm({ uid, email, locale, showToast }: Props) {
             <select
               className="w-full rounded-md border border-slate-200 px-2 py-2 text-sm"
               value={paymentMethod}
-              onChange={(e) => { setPaymentMethod(e.target.value); setCardCheckout(false); }}
+              onChange={(e) => { setPaymentMethod(e.target.value as 'zelle' | 'link'); setPayLink(''); }}
             >
-              <option value="cash">{es ? 'Efectivo' : 'Cash'}</option>
               <option value="zelle">Zelle</option>
-              <option value="transfer">{es ? 'Transferencia' : 'Bank transfer'}</option>
-              <option value="card">{es ? 'Tarjeta' : 'Card'}</option>
-              <option value="other">{es ? 'Otro' : 'Other'}</option>
+              <option value="link">{es ? 'Mandarle un link de pago' : 'Send a payment link'}</option>
             </select>
           </div>
         </div>
@@ -416,63 +442,80 @@ export function WorkerSaleForm({ uid, email, locale, showToast }: Props) {
           </div>
         </div>
 
-        {/* Payment action */}
-        {isCard ? (
-          stripeAvailable ? (
-            !cardCheckout ? (
-              <Button
-                type="button"
-                disabled={!cardReady}
-                className="w-full bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50"
-                onClick={() => setCardCheckout(true)}
-              >
-                {cardReady
-                  ? (es ? `Cobrar $${total.toFixed(2)} con tarjeta` : `Charge $${total.toFixed(2)} by card`)
-                  : (es ? 'Agrega cliente y productos para cobrar' : 'Add customer and items to charge')}
-              </Button>
-            ) : (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {es ? 'Pago seguro con tarjeta' : 'Secure card payment'}
-                  </p>
-                  <button type="button" className="text-xs font-bold text-slate-500 hover:underline" onClick={() => setCardCheckout(false)}>
-                    {es ? 'Editar venta' : 'Edit sale'}
-                  </button>
-                </div>
-                <StripeCardForm
-                  publishableKey={stripePublishableKey as string}
-                  items={validLines.map((l) => ({
-                    productId: l.productId,
-                    name: l.name.trim(),
-                    quantity: Math.max(1, Math.round(l.quantity)),
-                    unitPrice: Math.max(0, Number(l.price) || 0),
-                  }))}
-                  couponCode={appliedCoupon?.code || null}
-                  claimedTotal={total}
-                  shippingCost={0}
-                  customerEmail={customerEmail.trim()}
-                  locale={locale}
-                  onPaymentSuccess={({ intentId }) => void onCardPaid(intentId)}
-                />
-              </div>
-            )
-          ) : (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+        {/* Cobro: Zelle o link de pago */}
+        {isLink ? (
+          <div className="space-y-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
               {es
-                ? 'El pago con tarjeta no está activado. Pídele al administrador que configure Stripe, o elige otro método de pago (efectivo, Zelle, transferencia).'
-                : 'Card payments are not enabled. Ask the administrator to set up Stripe, or pick another payment method (cash, Zelle, transfer).'}
+                ? 'Se crea un enlace con esta venta ya armada. El cliente lo abre, paga en la web y tu comisión queda registrada a tu nombre.'
+                : 'A link with this sale pre-loaded is created. The customer opens it, pays on the site, and your commission is recorded under your name.'}
             </div>
-          )
+            <Button
+              type="button"
+              disabled={linkLoading || !saleReady}
+              className="w-full bg-brand-600 text-white hover:bg-brand-500 disabled:opacity-50"
+              onClick={() => void generatePaymentLink()}
+            >
+              {linkLoading
+                ? (es ? 'Generando…' : 'Generating…')
+                : saleReady
+                  ? (es ? `Generar link de pago · $${total.toFixed(2)}` : `Generate payment link · $${total.toFixed(2)}`)
+                  : (es ? 'Agrega cliente y productos' : 'Add customer and items')}
+            </Button>
+
+            {payLink && (
+              <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 space-y-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-brand-700">
+                  {es ? 'Link listo para enviar' : 'Link ready to send'}
+                </p>
+                <p className="break-all font-mono text-xs text-slate-700">{payLink}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-slate-900 text-white hover:bg-slate-800"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(payLink);
+                      showToast(es ? 'Link copiado' : 'Link copied');
+                    }}
+                  >
+                    {es ? 'Copiar link' : 'Copy link'}
+                  </Button>
+                  {customerWhatsApp.replace(/\D/g, '').length >= 7 && (
+                    <a
+                      href={`https://wa.me/1${customerWhatsApp.replace(/\D/g, '')}?text=${encodeURIComponent(
+                        (es ? 'Aquí está tu link de pago ILLIUM: ' : 'Here is your ILLIUM payment link: ') + payLink
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button type="button" size="sm" className="bg-emerald-600 text-white hover:bg-emerald-500">
+                        {es ? 'Enviar por WhatsApp' : 'Send on WhatsApp'}
+                      </Button>
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
-          <Button
-            type="button"
-            disabled={saving}
-            className="w-full bg-slate-900 text-white hover:bg-slate-800"
-            onClick={() => void submitManual()}
-          >
-            {saving ? (es ? 'Guardando…' : 'Saving…') : (es ? 'Registrar venta' : 'Register sale')}
-          </Button>
+          <div className="space-y-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+              {es ? 'El cliente paga por Zelle' : 'The customer pays by Zelle'}
+              {zelleNumber ? <> · <span className="font-mono font-bold text-slate-900">{zelleNumber}</span></> : null}
+              {es
+                ? '. La venta queda pendiente hasta que el admin confirme el pago.'
+                : '. The sale stays pending until the admin confirms the payment.'}
+            </div>
+            <Button
+              type="button"
+              disabled={saving}
+              className="w-full bg-slate-900 text-white hover:bg-slate-800"
+              onClick={() => void submitManual()}
+            >
+              {saving ? (es ? 'Guardando…' : 'Saving…') : (es ? 'Registrar venta con Zelle' : 'Register Zelle sale')}
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>

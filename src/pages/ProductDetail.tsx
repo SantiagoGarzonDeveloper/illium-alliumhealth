@@ -256,16 +256,20 @@ export function ProductDetail() {
             {/* COA expandable section */}
             <CoaSection locale={locale} productName={lp.name} />
 
-            {/* Quiz CTA */}
+            {/* Catálogo completo */}
             <div className="rounded-2xl bg-gradient-to-br from-brand-900/40 to-slate-900/50 border border-brand-700/30 p-6 mt-8">
               <h4 className="font-bold text-white mb-2 flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-brand-400" />
-                {t('product.unsureTitle')}
+                {locale === 'es' ? 'Explora todo el catálogo' : 'Explore the full catalog'}
               </h4>
-              <p className="text-sm text-slate-400 mb-4">{t('product.unsureBody')}</p>
-              <Link to="/quiz">
+              <p className="text-sm text-slate-400 mb-4">
+                {locale === 'es'
+                  ? 'Todos nuestros compuestos de investigación, con pureza certificada por lote.'
+                  : 'All our research compounds, with certified purity per batch.'}
+              </p>
+              <Link to="/shop">
                 <Button className="w-full rounded-full border border-brand-500/30 bg-brand-500/10 text-brand-300 hover:bg-brand-500/20 h-10 text-sm font-semibold">
-                  {t('product.startQuiz')}
+                  {locale === 'es' ? 'Ver catálogo' : 'View catalog'}
                 </Button>
               </Link>
             </div>

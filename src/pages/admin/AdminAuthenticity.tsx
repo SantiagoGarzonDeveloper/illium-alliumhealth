@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import {
   collection,
   onSnapshot,
@@ -14,11 +14,11 @@ import {
   updateDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadMedia } from '@/lib/uploadMedia';
 import { useAppStore } from '@/store';
 import { useI18n } from '@/i18n/I18nContext';
 import { useToastStore } from '@/store';
-import { ShieldCheck, Download, Loader2, Plus, AlertTriangle, Ban, FileText } from 'lucide-react';
+import { ShieldCheck, Download, Loader2, Plus, AlertTriangle, Ban, FileText, Copy, Image as ImageIcon } from 'lucide-react';
 import QRCode from 'qrcode';
 import { jsPDF } from 'jspdf';
 import { coaPdfBlob, downloadCoaPdf } from '@/lib/generateCoaPdf';
@@ -142,11 +142,7 @@ export function AdminAuthenticity() {
   };
 
   const handleCoaUpload = async (file: File): Promise<string> => {
-    const safeLot = (gLot || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const path = `coa/${gProductId || 'product'}/${safeLot}-${Date.now()}.pdf`;
-    const ref = storageRef(storage, path);
-    await uploadBytes(ref, file, { contentType: file.type || 'application/pdf' });
-    return await getDownloadURL(ref);
+    return await uploadMedia(file, 'coa');
   };
 
   const handleGenerate = async () => {
@@ -213,6 +209,65 @@ export function AdminAuthenticity() {
     }
   };
 
+  /**
+   * Genera el PNG del QR de un código, listo para pegar en la etiqueta del vial.
+   * Devuelve el blob y su data URL.
+   */
+  const buildQrPng = async (code: string): Promise<{ blob: Blob; dataUrl: string }> => {
+    const url = `https://alliumhealth.net/verify/${code}`;
+    const dataUrl = await QRCode.toDataURL(url, {
+      errorCorrectionLevel: 'H',
+      margin: 2,
+      width: 1024,
+      color: { dark: '#000000', light: '#FFFFFF' },
+    });
+    const blob = await (await fetch(dataUrl)).blob();
+    return { blob, dataUrl };
+  };
+
+  /** Descarga el QR de un código como imagen PNG. */
+  const downloadQrPng = async (code: string) => {
+    try {
+      const { dataUrl } = await buildQrPng(code);
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `ILLIUM_QR_${code}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast(es ? 'QR descargado como imagen' : 'QR downloaded as image');
+    } catch (err) {
+      console.error(err);
+      showToast(es ? 'No se pudo generar el QR' : 'Could not generate the QR');
+    }
+  };
+
+  /** Copia el QR al portapapeles como imagen (para pegarlo en la etiqueta). */
+  const copyQrImage = async (code: string) => {
+    try {
+      const { blob, dataUrl } = await buildQrPng(code);
+      const clip = navigator.clipboard as Clipboard & {
+        write?: (items: ClipboardItem[]) => Promise<void>;
+      };
+      if (typeof ClipboardItem !== 'undefined' && clip?.write) {
+        await clip.write([new ClipboardItem({ 'image/png': blob })]);
+        showToast(es ? 'QR copiado como imagen' : 'QR image copied');
+        return;
+      }
+      // El navegador no deja copiar imágenes → se descarga para no dejar al usuario sin nada.
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `ILLIUM_QR_${code}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast(es ? 'Tu navegador no permite copiar imágenes: se descargó el QR' : 'Your browser cannot copy images: the QR was downloaded');
+    } catch (err) {
+      console.error(err);
+      showToast(es ? 'No se pudo copiar el QR' : 'Could not copy the QR');
+    }
+  };
+
   const downloadQRsAsPdf = async (codeList: string[], productName: string, lot: string) => {
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     const pageW = 210;
@@ -276,11 +331,7 @@ export function AdminAuthenticity() {
     try {
       showToast(es ? 'Generando COA...' : 'Generating COA...');
       const blob = await coaPdfBlob(input);
-      const safeLot = lot.replace(/[^a-zA-Z0-9_-]/g, '_');
-      const path = `coa/${first.productId || 'product'}/${safeLot}-auto-${Date.now()}.pdf`;
-      const ref = storageRef(storage, path);
-      await uploadBytes(ref, blob, { contentType: 'application/pdf' });
-      const url = await getDownloadURL(ref);
+      const url = await uploadMedia(blob, 'coa');
 
       // Update all codes in this lot with the new coaUrl
       const ids = lotCodes.map((c) => c.id);
@@ -554,7 +605,25 @@ export function AdminAuthenticity() {
                           </a>
                         ) : <span className="text-xs text-slate-400">—</span>}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-slate-700 text-xs"
+                          title={es ? 'Copiar el QR como imagen para la etiqueta' : 'Copy the QR as an image for the label'}
+                          onClick={() => void copyQrImage(c.id)}
+                        >
+                          <Copy className="w-3 h-3 mr-1" />{es ? 'Copiar QR' : 'Copy QR'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-slate-700 text-xs"
+                          title={es ? 'Descargar el QR como imagen PNG' : 'Download the QR as a PNG image'}
+                          onClick={() => void downloadQrPng(c.id)}
+                        >
+                          <ImageIcon className="w-3 h-3 mr-1" />PNG
+                        </Button>
                         {c.status !== 'voided' && (
                           <Button size="sm" variant="ghost" className="text-red-600 text-xs" onClick={() => setVoidId(c.id)}>
                             <Ban className="w-3 h-3 mr-1" />{es ? 'Anular' : 'Void'}

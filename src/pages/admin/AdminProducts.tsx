@@ -3,10 +3,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Pencil, Trash2, Image as ImageIcon, Loader2, ArrowLeft } from 'lucide-react';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, doc, deleteDoc, setDoc, addDoc, writeBatch, deleteField } from 'firebase/firestore';
 import { getEffectivePrice } from '@/lib/pricing';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadMedia } from '@/lib/uploadMedia';
 import type { Product } from '@/store';
 import { useAppStore, useToastStore } from '@/store';
 import { Dialog } from '@/components/ui/dialog';
@@ -51,9 +51,7 @@ export function AdminProducts() {
 
     setUploadingImage(true);
     try {
-      const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const url = await uploadMedia(file, 'products');
       setCurrentProduct({ ...currentProduct, img: url });
     } catch (error) {
       console.error('Error uploading image:', error);

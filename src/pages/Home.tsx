@@ -1,4 +1,4 @@
-import { useState, useEffect, type ComponentType } from 'react';
+import { useState, useEffect, useMemo, type ComponentType } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -10,6 +10,7 @@ import { useI18n } from '@/i18n/I18nContext';
 import type { Locale } from '@/i18n/translations';
 import { getLocalizedProduct } from '@/lib/productLocale';
 import { getEffectivePrice } from '@/lib/pricing';
+import { isDeadStorageUrl } from '@/lib/uploadMedia';
 
 type HomeCategory = {
   name: string;
@@ -72,10 +73,36 @@ function localizedProductCategory(slug: string, locale: Locale, t: (p: string) =
   return tr === key ? slug : tr;
 }
 
+/** Imagen de respaldo cuando un producto no tiene foto o la foto está rota. */
+const FALLBACK_IMG = '/product-images/illium-bpc-157.png';
+
+/**
+ * Las URLs viejas de Firebase Storage ya no cargan (la cuenta de facturación
+ * del proyecto se cerró y el bucket devuelve HTTP 402). Cuando aparezca una,
+ * se usa la imagen de respaldo en vez de mostrar el ícono de imagen rota.
+ */
+function productImage(img?: string): string {
+  if (!img || !img.trim()) return FALLBACK_IMG;
+  if (isDeadStorageUrl(img)) return FALLBACK_IMG;
+  return img;
+}
+
 export function Home() {
   const { t, locale } = useI18n();
   const products = useAppStore((state) => state.products);
   const bestsellers = products.slice(0, 4);
+  const [catalogFilter, setCatalogFilter] = useState<string>('all');
+
+  /** Categorías presentes en el catálogo real (para los filtros de la portada). */
+  const catalogCategories = useMemo(() => {
+    const slugs = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
+    return ['all', ...slugs];
+  }, [products]);
+
+  const catalogProducts = useMemo(
+    () => (catalogFilter === 'all' ? products : products.filter((p) => p.category === catalogFilter)),
+    [products, catalogFilter]
+  );
   const [, setHeroTitle] = useState(() => t('home.defaultHeroTitle'));
   const [, setHeroSubtitle] = useState(() => t('home.defaultHeroSubtitle'));
   const [heroVideoUrl, setHeroVideoUrl] = useState<string>('');
@@ -161,9 +188,9 @@ export function Home() {
               muted
               loop
               playsInline
-              className="absolute inset-0 w-full h-full object-cover"
-              poster="/illium-logo-dark.png"
+              className="absolute inset-0 w-full h-full object-cover bg-black"
               style={{ filter: 'brightness(1.5) contrast(1.15) saturate(1.2)' }}
+              onError={() => setHeroVideoUrl('')}
             >
               <source src={heroVideoUrl} type="video/mp4" />
             </video>
@@ -276,21 +303,21 @@ export function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7, duration: 0.8 }}
             >
-              <Link to="/quiz">
+              <a href="#catalogo">
                 <Button
                   size="lg"
                   className="btn-premium w-full sm:w-auto bg-gradient-to-r from-brand-500 to-brand-400 text-white hover:from-brand-400 hover:to-brand-300 rounded-full h-14 px-12 text-base font-bold shadow-2xl shadow-brand-500/50"
                 >
-                  {locale === 'es' ? 'Encuentra tus compuestos' : 'Find your compounds'}
+                  {locale === 'es' ? 'Ver el catálogo completo' : 'See the full catalog'}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-              </Link>
-              <Link to="/shop">
+              </a>
+              <Link to="/lab-results">
                 <Button
                   size="lg"
                   className="btn-premium w-full sm:w-auto bg-white/10 backdrop-blur-md border-2 border-white/20 text-white hover:bg-white/20 rounded-full h-14 px-10 text-base font-semibold"
                 >
-                  {locale === 'es' ? 'Ver productos' : 'View products'}
+                  {locale === 'es' ? 'Resultados de laboratorio' : 'Lab results'}
                 </Button>
               </Link>
             </motion.div>
@@ -335,69 +362,6 @@ export function Home() {
       {/* unused var suppressor */}
       {false && <span>{bestsellers[0]?.id}{HeadphonesIcon.name}{Zap.name}{Brain.name}</span>}
 
-      {/* Quiz CTA — high above the fold to drive conversion */}
-      <section className="py-14 bg-white border-b border-slate-100">
-        <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto rounded-3xl bg-gradient-to-br from-slate-950 via-brand-900 to-slate-950 p-8 md:p-12 text-white relative overflow-hidden">
-            <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-brand-500/10 blur-3xl" />
-            <div className="absolute -left-20 -bottom-20 h-80 w-80 rounded-full bg-brand-600/10 blur-3xl" />
-            <div className="relative grid lg:grid-cols-[1fr_auto] gap-6 items-center">
-              <div>
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-500/20 border border-brand-400/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.25em] text-brand-300 mb-4">
-                  <Sparkles className="h-3 w-3" />
-                  {locale === 'es' ? 'Quiz IA' : 'AI Quiz'}
-                </div>
-                <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
-                  {locale === 'es' ? 'No adivines. Descubre exactamente qué necesitas' : "Don't guess. Discover exactly what you need"}
-                </h2>
-                <p className="text-base text-slate-300 mb-6 max-w-xl">
-                  {locale === 'es'
-                    ? 'Responde 5 preguntas y obtén un protocolo personalizado en segundos.'
-                    : 'Answer 5 questions and get a personalized protocol in seconds.'}
-                </p>
-                <Link to="/quiz">
-                  <Button
-                    size="lg"
-                    className="btn-premium bg-gradient-to-r from-brand-500 to-brand-400 text-white hover:from-brand-400 hover:to-brand-300 rounded-full h-13 px-10 text-base font-bold shadow-2xl shadow-brand-500/40"
-                  >
-                    {locale === 'es' ? 'Empieza ahora' : 'Start now'}
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
-              </div>
-              <div className="hidden lg:flex flex-col gap-4">
-                <div className="flex items-center gap-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 p-4">
-                  <div className="h-10 w-10 rounded-lg bg-brand-500/20 flex items-center justify-center shrink-0">
-                    <Zap className="h-5 w-5 text-brand-400" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-white text-sm">60 {locale === 'es' ? 'segundos' : 'seconds'}</p>
-                    <p className="text-xs text-slate-400">{locale === 'es' ? 'Rápido y simple' : 'Quick & simple'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 p-4">
-                  <div className="h-10 w-10 rounded-lg bg-brand-500/20 flex items-center justify-center shrink-0">
-                    <Sparkles className="h-5 w-5 text-brand-400" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-white text-sm">{locale === 'es' ? 'Personalizado' : 'Fully personalized'}</p>
-                    <p className="text-xs text-slate-400">{locale === 'es' ? 'Según tu perfil' : 'Based on your profile'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 p-4">
-                  <div className="h-10 w-10 rounded-lg bg-brand-500/20 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="h-5 w-5 text-brand-400" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-white text-sm">{locale === 'es' ? 'Sin compromiso' : 'No commitment'}</p>
-                    <p className="text-xs text-slate-400">{locale === 'es' ? '100% gratis' : '100% free'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Categories */}
       <section className="py-20 bg-slate-50/50">
@@ -434,6 +398,7 @@ export function Home() {
                         <img
                           src={cat.imageUrl}
                           alt={cat.name}
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
@@ -452,10 +417,10 @@ export function Home() {
                         {(() => {
                           const slug = categorySlugFromPath(cat.path)?.toLowerCase() || '';
                           const subs: Record<string, { es: string; en: string }> = {
-                            metabolic: { es: 'Pérdida de grasa y metabolismo', en: 'Fat loss & metabolism' },
-                            recovery: { es: 'Recuperación muscular y anti-fatiga', en: 'Muscle recovery & anti-fatigue' },
-                            nootropics: { es: 'Enfoque, memoria y claridad mental', en: 'Focus, memory & mental clarity' },
-                            nad: { es: 'Energía celular y vitalidad', en: 'Cellular energy & vitality' },
+                            metabolic: { es: 'Vías metabólicas y señalización GLP', en: 'Metabolic pathways & GLP signaling' },
+                            recovery: { es: 'Reparación de tejidos y vías antiinflamatorias', en: 'Tissue repair & anti-inflammatory pathways' },
+                            nootropics: { es: 'Investigación neurológica y cognitiva', en: 'Neurological & cognitive research' },
+                            nad: { es: 'Metabolismo celular y NAD+', en: 'Cellular metabolism & NAD+' },
                             blends: { es: 'Combinaciones premium', en: 'Premium combinations' },
                             peptides: { es: 'Péptidos de investigación', en: 'Research peptides' },
                           };
@@ -478,99 +443,107 @@ export function Home() {
         </div>
       </section>
 
-      {/* Bestsellers */}
-      <section className="py-20 bg-slate-50/50">
+      {/* Catálogo completo — todos los productos, sin salir de la portada */}
+      <section id="catalogo" className="py-20 bg-white border-t border-slate-100 scroll-mt-20">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-12 gap-4">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2 tracking-tight">{t('home.bestsellersTitle')}</h2>
-              <p className="text-slate-500">{t('home.bestsellersSubtitle')}</p>
-            </div>
-            <Link to="/shop">
-              <Button className="bg-brand-600 hover:bg-brand-500 text-white rounded-full h-10 px-6 text-sm font-bold shadow-md">
-                {t('home.viewAll')} <ArrowRight className="ml-1.5 h-4 w-4" />
-              </Button>
-            </Link>
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-brand-700 mb-3">
+              {locale === 'es' ? 'Catálogo' : 'Catalog'}
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3 tracking-tight">
+              {locale === 'es' ? 'Todos los compuestos de investigación' : 'All research compounds'}
+            </h2>
+            <p className="text-slate-500">
+              {locale === 'es'
+                ? `${products.length} compuestos de grado laboratorio · pureza 99%+ · COA por lote`
+                : `${products.length} lab-grade compounds · 99%+ purity · COA per batch`}
+            </p>
+            <div className="section-divider mt-4" />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {bestsellers.map((product, idx) => {
-              const lp = getLocalizedProduct(product, locale);
-              const eff = getEffectivePrice(product);
-              const rating = (4.6 + ((idx * 0.1) % 0.4)).toFixed(1);
-              const reviews = 120 + idx * 37;
-              const isLowStock = (product.stock ?? 100) < 30;
-              return (
-              <Link key={product.id} to={`/product/${product.id}`} className="group block">
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-black p-3 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-600/25">
-                  {/* Top badges — varied per product */}
-                  <div className="absolute top-5 left-5 right-5 z-20 flex justify-between items-start gap-2">
-                    {(() => {
-                      const badges = [
-                        { label: locale === 'es' ? 'Más vendido' : 'Best Seller', icon: '🔥', bg: 'bg-brand-900/95' },
-                        { label: locale === 'es' ? 'Más popular' : 'Most Popular', icon: '⭐', bg: 'bg-brand-900/95' },
-                        { label: locale === 'es' ? 'Tendencia' : 'Trending', icon: '📈', bg: 'bg-brand-900/95' },
-                        { label: locale === 'es' ? 'Nuevo' : 'New', icon: '✨', bg: 'bg-brand-900/95' },
-                      ];
-                      const b = badges[idx % badges.length];
-                      return (
-                        <span className={`inline-flex items-center gap-1 rounded-full ${b.bg} backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1`}>
-                          {b.icon} {b.label}
-                        </span>
-                      );
-                    })()}
-                    <div className="flex flex-col items-end gap-1.5">
-                      {eff.hasDiscount && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 shadow-lg">
-                          -{eff.percentOff}%
-                        </span>
-                      )}
-                      {isLowStock && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-brand-900/95 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1">
-                          ⚡ {locale === 'es' ? 'Poco stock' : 'Low stock'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {/* Image section */}
-                  <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-gradient-to-b from-slate-800/50 to-black">
-                    <img
-                      src={product.img}
-                      alt={lp.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  </div>
-                  {/* Info section */}
-                  <div className="px-3 pt-5 pb-3">
-                    <div className="text-[10px] text-brand-400 mb-2 font-bold tracking-[0.2em] uppercase">
-                      ILLIUM · {localizedProductCategory(product.category, locale, t)}
-                    </div>
-                    <h3 className="font-bold text-white mb-2 line-clamp-1 text-lg tracking-tight">{lp.name}</h3>
-                    <div className="flex items-center gap-1.5 mb-3 text-xs text-slate-400">
-                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                      <span className="font-semibold text-white">{rating}</span>
-                      <span>({reviews})</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-bold text-2xl text-white">${eff.finalPrice.toFixed(0)}</span>
+          {/* Filtros por categoría */}
+          {catalogCategories.length > 1 && (
+            <div className="flex flex-wrap justify-center gap-2 mb-10">
+              {catalogCategories.map((slug) => (
+                <button
+                  key={slug}
+                  type="button"
+                  onClick={() => setCatalogFilter(slug)}
+                  className={`rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${
+                    catalogFilter === slug
+                      ? 'bg-brand-600 text-white shadow-md'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {slug === 'all'
+                    ? (locale === 'es' ? 'Todos' : 'All')
+                    : localizedProductCategory(slug, locale, t)}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {catalogProducts.length === 0 ? (
+            <p className="text-center text-slate-400 py-10">
+              {locale === 'es' ? 'Cargando catálogo…' : 'Loading catalog…'}
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+              {catalogProducts.map((product) => {
+                const lp = getLocalizedProduct(product, locale);
+                const eff = getEffectivePrice(product);
+                const outOfStock = (product.stock ?? 0) <= 0;
+                return (
+                  <Link key={product.id} to={`/product/${product.id}`} className="group block">
+                    <div className="relative h-full overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-brand-300">
+                      <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-slate-900 to-black">
+                        <img
+                          src={productImage(product.img)}
+                          alt={lp.name}
+                          loading="lazy"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG; }}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
                         {eff.hasDiscount && (
-                          <span className="text-sm text-slate-500 line-through">${eff.originalPrice.toFixed(0)}</span>
+                          <span className="absolute top-2 left-2 rounded-full bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 shadow">
+                            -{eff.percentOff}%
+                          </span>
+                        )}
+                        {outOfStock && (
+                          <span className="absolute top-2 right-2 rounded-full bg-slate-900/90 text-white text-[10px] font-bold px-2 py-0.5">
+                            {locale === 'es' ? 'Agotado' : 'Sold out'}
+                          </span>
                         )}
                       </div>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-600 hover:bg-brand-500 text-white text-[11px] font-bold px-3 py-1.5 transition-colors shadow-md">
-                        {locale === 'es' ? 'Ver' : 'View'} <ArrowRight className="h-3 w-3" />
-                      </span>
+                      <div className="p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-700 mb-1.5">
+                          {localizedProductCategory(product.category, locale, t)}
+                        </p>
+                        <h3 className="font-bold text-slate-900 text-sm leading-snug mb-2 line-clamp-2 min-h-[2.5rem]">
+                          {lp.name}
+                        </h3>
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-black text-lg text-slate-900">${eff.finalPrice.toFixed(0)}</span>
+                          {eff.hasDiscount && (
+                            <span className="text-xs text-slate-400 line-through">${eff.originalPrice.toFixed(0)}</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </Link>
-              );
-            })}
-          </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          <p className="text-center text-[11px] text-slate-400 mt-10 max-w-2xl mx-auto leading-relaxed">
+            {locale === 'es'
+              ? 'Compuestos destinados exclusivamente a investigación de laboratorio in vitro. No son para consumo humano ni animal.'
+              : 'Compounds intended exclusively for in vitro laboratory research. Not for human or animal consumption.'}
+          </p>
         </div>
       </section>
+
 
       {/* Trust section — build confidence */}
       <section className="py-20 bg-white border-t border-slate-100">
@@ -581,8 +554,8 @@ export function Home() {
                 <Star className="h-9 w-9 text-brand-700 fill-brand-700" />
               </div>
               <p className="text-4xl font-black text-slate-900 tracking-tight">2,000+</p>
-              <p className="text-sm text-slate-500 font-semibold mt-2">{locale === 'es' ? 'Clientes satisfechos' : 'Happy customers'}</p>
-              <p className="text-[11px] text-slate-400 mt-1">{locale === 'es' ? 'Recomendación verificada' : 'Verified reviews'}</p>
+              <p className="text-sm text-slate-500 font-semibold mt-2">{locale === 'es' ? 'Pedidos de investigación' : 'Research orders'}</p>
+              <p className="text-[11px] text-slate-400 mt-1">{locale === 'es' ? 'Laboratorios y profesionales' : 'Labs & professionals'}</p>
             </div>
             <div className="text-center">
               <div className="h-20 w-20 rounded-3xl bg-emerald-100 flex items-center justify-center mx-auto mb-4 shadow-sm">
@@ -633,8 +606,8 @@ export function Home() {
               </p>
               <p className="text-slate-600 leading-relaxed mb-8">
                 {locale === 'es'
-                  ? 'Cada producto que ofrecemos está destinado estrictamente para fines de investigación en laboratorio. Al combinar ciencia avanzada con pasión por el potencial humano, garantizamos que cada compuesto cumple con los estándares más exigentes.'
-                  : 'Every product we offer is intended strictly for laboratory research purposes only. By combining advanced science with a passion for human potential, we ensure that every compound we deliver meets the most uncompromising standards your work demands.'}
+                  ? 'Cada producto que ofrecemos está destinado estrictamente a investigación de laboratorio in vitro. Al combinar química analítica avanzada con control de calidad por lote, garantizamos que cada compuesto cumple con los estándares más exigentes de tu trabajo científico.'
+                  : 'Every product we offer is intended strictly for in vitro laboratory research. By combining advanced analytical chemistry with per-batch quality control, we ensure every compound meets the most uncompromising standards your scientific work demands.'}
               </p>
               <div className="grid grid-cols-2 gap-4 mb-8">
                 <div className="flex items-start gap-3">
@@ -833,41 +806,41 @@ export function Home() {
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-brand-500/15 border border-brand-400/30 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.3em] text-brand-300 mb-5">
                   <Sparkles className="h-3 w-3" />
-                  {locale === 'es' ? 'Quiz IA · 60 segundos' : 'AI Quiz · 60 seconds'}
+                  {locale === 'es' ? 'Catálogo · Pureza 99%+' : 'Catalog · 99%+ purity'}
                 </div>
                 <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight leading-[1.05] mb-4">
                   {locale === 'es' ? (
                     <>
-                      ¿No sabes por dónde <span className="bg-gradient-to-r from-brand-300 to-emerald-300 bg-clip-text text-transparent">empezar?</span>
+                      Compuestos listos para tu <span className="bg-gradient-to-r from-brand-300 to-emerald-300 bg-clip-text text-transparent">laboratorio</span>
                     </>
                   ) : (
                     <>
-                      Not sure where to <span className="bg-gradient-to-r from-brand-300 to-emerald-300 bg-clip-text text-transparent">start?</span>
+                      Compounds ready for your <span className="bg-gradient-to-r from-brand-300 to-emerald-300 bg-clip-text text-transparent">laboratory</span>
                     </>
                   )}
                 </h2>
                 <p className="text-slate-300 mb-8 text-base md:text-lg leading-relaxed">
                   {locale === 'es'
-                    ? 'Nuestro asistente de investigación analiza tu área de estudio y vías objetivo — e identifica compuestos relevantes en 60 segundos.'
-                    : 'Our research assistant analyzes your study area and target pathways — and identifies relevant compounds in 60 seconds.'}
+                    ? 'Cada lote se analiza por HPLC y espectrometría de masas en laboratorios independientes, con certificado de análisis disponible.'
+                    : 'Every batch is analyzed by HPLC and mass spectrometry at independent laboratories, with a certificate of analysis available.'}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Link to="/quiz">
+                  <a href="#catalogo">
                     <Button
                       size="lg"
                       className="btn-premium w-full sm:w-auto bg-gradient-to-r from-brand-500 to-brand-400 text-white hover:from-brand-400 hover:to-brand-300 rounded-full h-14 px-10 text-base font-bold shadow-2xl shadow-brand-500/40"
                     >
                       <Sparkles className="mr-2 h-5 w-5" />
-                      {locale === 'es' ? 'Empieza ahora' : 'Start now'}
+                      {locale === 'es' ? 'Ver el catálogo' : 'View the catalog'}
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
-                  </Link>
-                  <Link to="/consulta">
+                  </a>
+                  <Link to="/lab-results">
                     <Button
                       size="lg"
                       className="btn-premium w-full sm:w-auto bg-white/10 backdrop-blur-md border-2 border-white/20 text-white hover:bg-white/20 rounded-full h-14 px-8 text-sm font-semibold"
                     >
-                      {locale === 'es' ? 'Chat con asistente' : 'Chat with assistant'}
+                      {locale === 'es' ? 'Resultados de laboratorio' : 'Lab results'}
                     </Button>
                   </Link>
                 </div>
@@ -876,8 +849,8 @@ export function Home() {
               {/* Right — Stats / reassurance */}
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { n: '2K+', l: locale === 'es' ? 'Investigadores' : 'Researchers' },
-                  { n: '60s', l: locale === 'es' ? 'Quiz rápido' : 'Quick quiz' },
+                  { n: '2K+', l: locale === 'es' ? 'Envíos a laboratorios' : 'Lab shipments' },
+                  { n: 'COA', l: locale === 'es' ? 'Por cada lote' : 'Per batch' },
                   { n: '99%+', l: locale === 'es' ? 'Pureza' : 'Purity' },
                   { n: '24/7', l: locale === 'es' ? 'Soporte' : 'Support' },
                 ].map((s, i) => (
@@ -895,6 +868,100 @@ export function Home() {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+      {/* Bestsellers */}
+      <section className="py-20 bg-slate-50/50">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-12 gap-4">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2 tracking-tight">{t('home.bestsellersTitle')}</h2>
+              <p className="text-slate-500">{t('home.bestsellersSubtitle')}</p>
+            </div>
+            <Link to="/shop">
+              <Button className="bg-brand-600 hover:bg-brand-500 text-white rounded-full h-10 px-6 text-sm font-bold shadow-md">
+                {t('home.viewAll')} <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {bestsellers.map((product, idx) => {
+              const lp = getLocalizedProduct(product, locale);
+              const eff = getEffectivePrice(product);
+              const rating = (4.6 + ((idx * 0.1) % 0.4)).toFixed(1);
+              const reviews = 120 + idx * 37;
+              const isLowStock = (product.stock ?? 100) < 30;
+              return (
+              <Link key={product.id} to={`/product/${product.id}`} className="group block">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-black p-3 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-600/25">
+                  {/* Top badges — varied per product */}
+                  <div className="absolute top-5 left-5 right-5 z-20 flex justify-between items-start gap-2">
+                    {(() => {
+                      const badges = [
+                        { label: locale === 'es' ? 'Más vendido' : 'Best Seller', icon: '🔥', bg: 'bg-brand-900/95' },
+                        { label: locale === 'es' ? 'Más popular' : 'Most Popular', icon: '⭐', bg: 'bg-brand-900/95' },
+                        { label: locale === 'es' ? 'Tendencia' : 'Trending', icon: '📈', bg: 'bg-brand-900/95' },
+                        { label: locale === 'es' ? 'Nuevo' : 'New', icon: '✨', bg: 'bg-brand-900/95' },
+                      ];
+                      const b = badges[idx % badges.length];
+                      return (
+                        <span className={`inline-flex items-center gap-1 rounded-full ${b.bg} backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1`}>
+                          {b.icon} {b.label}
+                        </span>
+                      );
+                    })()}
+                    <div className="flex flex-col items-end gap-1.5">
+                      {eff.hasDiscount && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 shadow-lg">
+                          -{eff.percentOff}%
+                        </span>
+                      )}
+                      {isLowStock && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-brand-900/95 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1">
+                          ⚡ {locale === 'es' ? 'Poco stock' : 'Low stock'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {/* Image section */}
+                  <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-gradient-to-b from-slate-800/50 to-black">
+                    <img
+                      src={productImage(product.img)}
+                      alt={lp.name}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG; }}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  </div>
+                  {/* Info section */}
+                  <div className="px-3 pt-5 pb-3">
+                    <div className="text-[10px] text-brand-400 mb-2 font-bold tracking-[0.2em] uppercase">
+                      ILLIUM · {localizedProductCategory(product.category, locale, t)}
+                    </div>
+                    <h3 className="font-bold text-white mb-2 line-clamp-1 text-lg tracking-tight">{lp.name}</h3>
+                    <div className="flex items-center gap-1.5 mb-3 text-xs text-slate-400">
+                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                      <span className="font-semibold text-white">{rating}</span>
+                      <span>({reviews})</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-bold text-2xl text-white">${eff.finalPrice.toFixed(0)}</span>
+                        {eff.hasDiscount && (
+                          <span className="text-sm text-slate-500 line-through">${eff.originalPrice.toFixed(0)}</span>
+                        )}
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-600 hover:bg-brand-500 text-white text-[11px] font-bold px-3 py-1.5 transition-colors shadow-md">
+                        {locale === 'es' ? 'Ver' : 'View'} <ArrowRight className="h-3 w-3" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+              );
+            })}
           </div>
         </div>
       </section>

@@ -102,8 +102,6 @@ export function Navbar() {
 
   const navLinks = [
     { to: '/shop', label: t('nav.products') },
-    { to: '/quiz', label: locale === 'es' ? 'Encuentra compuestos para tu investigación' : 'Find Compounds for Your Research' },
-    { to: '/consulta', label: locale === 'es' ? 'Consultoría' : 'Consulting' },
     { to: '/lab-results', label: locale === 'es' ? 'Resultados de lab' : 'Lab Results' },
     { to: '/calculator', label: locale === 'es' ? 'Calculadora' : 'Research Calculator' },
   ];

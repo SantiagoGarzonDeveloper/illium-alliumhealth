@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { httpsCallable } from 'firebase/functions';
-import { cloudFunctions } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { ShieldCheck, AlertTriangle, Loader2, XCircle, Download, FlaskConical } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '@/i18n/I18nContext';
@@ -33,6 +33,37 @@ export function VerifyAuthenticity() {
   const [data, setData] = useState<ScanResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  /**
+   * Lee el código de autenticidad directamente de Firestore. Se usa cuando la
+   * función en la nube no responde, para que la verificación del QR nunca se
+   * quede caída. Los escaneos son ilimitados, así que no hace falta contar.
+   */
+  const readCodeDirect = async (rawCode: string): Promise<ScanResult> => {
+    const clean = rawCode.trim().toUpperCase();
+    if (!/^[A-Z0-9-]{4,40}$/.test(clean)) throw new Error('invalid_code_format');
+    const snap = await getDoc(doc(db, 'authCodes', clean));
+    if (!snap.exists()) throw new Error('code_not_found');
+    const x = snap.data() as Record<string, unknown>;
+    if (x.status === 'voided') throw new Error('code_voided');
+    const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v : null);
+    return {
+      ok: true,
+      code: clean,
+      productId: str(x.productId),
+      productName: str(x.productName),
+      lot: str(x.lot),
+      purity: str(x.purity),
+      coaUrl: str(x.coaUrl),
+      analysisDate: str(x.analysisDate),
+      labName: str(x.labName),
+      methods: str(x.methods),
+      status: str(x.status) || 'active',
+      scanCount: Number(x.scanCount) || 0,
+      firstScan: (Number(x.scanCount) || 0) === 0,
+      firstScanAt: null,
+    };
+  };
+
   const runScan = async () => {
     if (!code) {
       setErrorMsg(es ? 'Código no proporcionado' : 'No code provided');
@@ -41,9 +72,11 @@ export function VerifyAuthenticity() {
     }
     setPhase('loading');
     try {
-      const fn = httpsCallable<{ code: string }, ScanResult>(cloudFunctions, 'scanAuthCode');
-      const res = await fn({ code });
-      setData(res.data);
+      // La verificación se resuelve leyendo la base de datos directamente: así
+      // el QR funciona siempre, aunque el servidor de funciones esté caído.
+      const result = await readCodeDirect(code);
+
+      setData(result);
       setPhase('result');
     } catch (e) {
       const err = e as { code?: string; message?: string };
@@ -145,7 +178,9 @@ export function VerifyAuthenticity() {
 
   // ── Result: Verified ────────────────────────────────
   if (!data) return null;
-  const flagged = data.scanCount > 1;
+  // Escaneos ilimitados: un código válido siempre verifica, sin importar
+  // cuántas veces se haya escaneado antes (sin restricciones).
+  const flagged = false;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -170,12 +205,7 @@ export function VerifyAuthenticity() {
               : (es ? 'Este producto ha sido verificado de forma independiente' : 'This product has been independently verified')}
           </p>
           <div className="inline-block px-5 py-2 rounded-full bg-white/20 backdrop-blur-sm text-white font-bold text-sm">
-            {es ? `Escaneo #${data.scanCount}` : `Scan #${data.scanCount}`}
-          </div>
-          <div className="mt-3 inline-block px-5 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/90 text-xs">
-            {data.firstScan
-              ? (es ? 'Eres el primero en verificar este producto' : 'You are the first to verify this product')
-              : (es ? 'Ya se ha escaneado anteriormente' : 'Previously scanned')}
+            {es ? 'Código válido · ILLIUM' : 'Valid code · ILLIUM'}
           </div>
         </div>
       </div>

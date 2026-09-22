@@ -1156,8 +1156,8 @@ interface AuthCodeData {
 
 /**
  * Public callable to scan an authenticity code.
- * Increments scanCount atomically, stores scan history, and emails admins
- * on 2nd+ scan (possible counterfeit).
+ * Increments scanCount for statistics only. Los escaneos son ILIMITADOS:
+ * ningún código se bloquea ni se marca como sospechoso por escanearse varias veces.
  */
 export const scanAuthCode = onCall(
   { region: 'us-central1', cors: true, secrets: [RESEND_API_KEY] },
@@ -1205,57 +1205,8 @@ export const scanAuthCode = onCall(
 
     await ref.update(update);
 
-    // Alert admins when code is scanned 2+ times (possible counterfeit / resale)
-    if (newCount >= 2) {
-      try {
-        const apiKey = RESEND_API_KEY.value();
-        if (apiKey) {
-          const sDoc = await db.doc('settings/general').get();
-          const list = sDoc.data()?.adminEmails;
-          const recipients: string[] = Array.isArray(list)
-            ? list.filter((x) => typeof x === 'string' && x.includes('@')).map((x) => String(x).trim())
-            : [];
-          if (recipients.length > 0) {
-            const productName = existing.productName || '—';
-            const lot = existing.lot || '—';
-            const firstTs = existing.firstScanAt && typeof (existing.firstScanAt as FirebaseFirestore.Timestamp).toDate === 'function'
-              ? (existing.firstScanAt as FirebaseFirestore.Timestamp).toDate().toISOString()
-              : '—';
-            const html = `<!doctype html><html><body style="margin:0;padding:0;background:#fef2f2;font-family:-apple-system,sans-serif;">
-              <table style="width:100%;padding:32px 16px;" cellpadding="0" cellspacing="0"><tr><td align="center">
-                <table style="width:100%;max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:2px solid #dc2626;" cellpadding="0" cellspacing="0">
-                  <tr><td style="padding:18px 24px;background:#991b1b;color:#ffffff;">
-                    <div style="font-size:20px;font-weight:900;letter-spacing:2px;">⚠️ ILLIUM · MULTIPLE SCAN ALERT</div>
-                  </td></tr>
-                  <tr><td style="padding:24px;color:#0f172a;font-size:14px;line-height:1.6;">
-                    <p style="margin:0 0 12px;color:#475569;">Se detectó un escaneo múltiple de un código de autenticidad. Esto puede indicar una posible falsificación o un vial revendido.</p>
-                    <table style="width:100%;border-collapse:collapse;font-size:13px;">
-                      <tr><td style="padding:6px 0;color:#64748b;width:40%;">Código</td><td style="padding:6px 0;font-family:monospace;font-weight:700;">${code}</td></tr>
-                      <tr><td style="padding:6px 0;color:#64748b;">Producto</td><td style="padding:6px 0;font-weight:600;">${productName}</td></tr>
-                      <tr><td style="padding:6px 0;color:#64748b;">Lote</td><td style="padding:6px 0;">${lot}</td></tr>
-                      <tr><td style="padding:6px 0;color:#64748b;">Escaneos totales</td><td style="padding:6px 0;color:#dc2626;font-weight:900;">${newCount}</td></tr>
-                      <tr><td style="padding:6px 0;color:#64748b;">Primer escaneo</td><td style="padding:6px 0;">${firstTs}</td></tr>
-                      <tr><td style="padding:6px 0;color:#64748b;">Último IP</td><td style="padding:6px 0;font-family:monospace;font-size:11px;">${ip}</td></tr>
-                    </table>
-                    <div style="margin-top:20px;text-align:center;">
-                      <a href="https://monaco-community.web.app/admin/authenticity" style="display:inline-block;background:#dc2626;color:#ffffff;padding:10px 22px;border-radius:8px;font-weight:700;text-decoration:none;font-size:13px;">Revisar en panel</a>
-                    </div>
-                  </td></tr>
-                </table>
-              </td></tr></table>
-            </body></html>`;
-            const subject = `⚠️ ILLIUM · Escaneo múltiple (${newCount}x) · ${code}`;
-            for (const to of recipients) {
-              try { await sendEmailViaResend(apiKey, { to, subject, html }); }
-              catch (e) { console.error('[auth] alert email failed', e); }
-            }
-          }
-        }
-      } catch (e) {
-        console.error('[auth] alert error', e);
-      }
-    }
-
+    // Escaneos ilimitados: un código se puede escanear las veces que haga falta
+    // y no se genera ninguna alerta ni restricción.
     return {
       ok: true,
       code,

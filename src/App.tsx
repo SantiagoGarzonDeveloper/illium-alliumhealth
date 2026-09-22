@@ -1,4 +1,4 @@
-import { Routes, Route, useSearchParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
@@ -6,7 +6,6 @@ import { Home } from './pages/Home';
 import { ProductList } from './pages/ProductList';
 import { ProductDetail } from './pages/ProductDetail';
 import { Cart } from './pages/Cart';
-import { Quiz } from './pages/Quiz';
 import { PeptideCalculator } from './pages/PeptideCalculator';
 import { AdminLayout } from './pages/admin/AdminLayout';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -123,7 +122,8 @@ function App() {
         <Route path="/shop" element={<><Navbar /><main className="flex-1"><ProductList /></main><Footer /><ChatbotWidget /></>} />
         <Route path="/product/:id" element={<><Navbar /><main className="flex-1"><ProductDetail /></main><Footer /><ChatbotWidget /></>} />
         <Route path="/cart" element={<><Navbar /><main className="flex-1"><Cart /></main><Footer /><ChatbotWidget /></>} />
-        <Route path="/quiz" element={<><Navbar /><main className="flex-1"><Quiz /></main><Footer /><ChatbotWidget /></>} />
+        {/* El cuestionario se eliminó — los enlaces viejos van al catálogo */}
+        <Route path="/quiz" element={<Navigate to="/shop" replace />} />
         <Route path="/calculator" element={<><Navbar /><main className="flex-1"><PeptideCalculator /></main><Footer /></>} />
         <Route path="/login" element={<><Navbar /><main className="flex-1"><Login /></main><Footer /></>} />
         <Route path="/profile" element={<><Navbar /><main className="flex-1"><UserProfile /></main><Footer /></>} />

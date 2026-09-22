@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
-import { auth, db, storage } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadMedia } from '@/lib/uploadMedia';
 import { Loader2, Camera, LayoutDashboard } from 'lucide-react';
 import { useToastStore } from '@/store';
 import { useI18n } from '@/i18n/I18nContext';
@@ -133,9 +133,7 @@ export function UserProfile() {
 
     setUploadingImage(true);
     try {
-      const storageRef = ref(storage, `profiles/${user.uid}_${Date.now()}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const url = await uploadMedia(file, 'avatars');
       await updateProfile(user, { photoURL: url });
       setUser({ ...user, photoURL: url });
       showToast(t('profile.photoUpdated'));

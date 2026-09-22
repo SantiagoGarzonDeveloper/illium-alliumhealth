@@ -139,9 +139,7 @@ function buildOrderContext(args: {
         `  - ${locale === 'es' ? 'Meses de suministro por vial' : 'Months of supply per vial'}: ${live.monthsSupplyPerVial}`,
       );
     }
-    if (live?.targetGender && live.targetGender !== 'both') {
-      lines.push(`  - ${locale === 'es' ? 'Indicado para' : 'Indicated for'}: ${live.targetGender}`);
-    }
+    // La segmentación por sexo se quitó: la web es solo de investigación de laboratorio.
   }
   return lines.join('\n');
 }

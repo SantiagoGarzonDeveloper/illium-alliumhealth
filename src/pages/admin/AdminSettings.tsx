@@ -2,9 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { db, storage, cloudFunctions } from '@/lib/firebase';
+import { db, cloudFunctions } from '@/lib/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadMedia } from '@/lib/uploadMedia';
 import { httpsCallable } from 'firebase/functions';
 import { Trash2, Plus, Loader2, ImageIcon, Upload, UserPlus, Shield } from 'lucide-react';
 import { Dialog } from '@/components/ui/dialog';
@@ -135,10 +135,7 @@ export function AdminSettings() {
     }
     setZelleQrUploading(true);
     try {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const storageRef = ref(storage, `payments/zelle-qr_${Date.now()}_${safeName}`);
-      await uploadBytes(storageRef, file, { contentType: file.type });
-      const url = await getDownloadURL(storageRef);
+      const url = await uploadMedia(file, 'payments');
       setSettings({ ...settings, zelleQrUrl: url });
     } catch (err) {
       console.error(err);
@@ -154,10 +151,7 @@ export function AdminSettings() {
   const uploadCategoryImage = async (index: number, file: File) => {
     setUploadingIndex(index);
     try {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const storageRef = ref(storage, `layout/categories/${Date.now()}_${safeName}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const url = await uploadMedia(file, 'branding');
       handleUpdateCategory(index, 'imageUrl', url);
     } catch (err) {
       console.error(err);
@@ -700,7 +694,7 @@ export function AdminSettings() {
               )}
               <Input
                 type="text"
-                placeholder="https://storage.googleapis.com/.../hero-video.mp4"
+                placeholder="https://alliumhealth.net/hero-video.mp4"
                 value={settings.heroVideoUrl || ''}
                 onChange={(e) => setSettings({ ...settings, heroVideoUrl: e.target.value })}
               />
@@ -720,7 +714,7 @@ export function AdminSettings() {
               )}
               <Input
                 type="text"
-                placeholder="https://storage.googleapis.com/.../illium-logo-light.png"
+                placeholder="https://alliumhealth.net/illium-logo-light.png"
                 value={settings.logoUrl || ''}
                 onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
               />
