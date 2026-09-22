@@ -109,6 +109,58 @@ escaneos del panel ya no sube (la función que lo incrementaba está caída).
 
 ---
 
+## 0.3 BACKEND PROPIO EN PHP (22-sep-2026) — sustituye a las Cloud Functions
+
+Como las funciones responden 503 y no se pueden redesplegar, lo que dependía de
+ellas se movió al hosting de SiteGround. **Ya no hace falta Firebase para esto.**
+
+**Archivos:**
+- `public/api.php` — la API pública (viaja con `npm run build`, NO tiene secretos).
+- `servidor-privado/illium-nucleo.php` y `config.php` — se suben por FTP a
+  `/alliumhealth.net/illium-privado/` (un nivel POR ENCIMA de `public_html`, así
+  que no se pueden abrir desde internet). `config.php` está en `.gitignore`.
+
+**Qué resuelve cada acción de `api.php`:**
+| acción | sustituye a | notas |
+|---|---|---|
+| `validar-correo` | `validateEmail` | MX, desechables, erratas ("gmial.com") |
+| `otp-crear` / `otp-verificar` | `requestEmailOTP` / `verifyEmailOTP` | el código se guarda en el servidor, **ya no en Firestore** |
+| `factura` | `sendInvoiceEmail` | solo admin |
+| `notificar-pedido` | `notifyOrderStatus` | solo admin |
+| `pedido-creado` | `waOnOrderCreated` (avisos) | correo al cliente + a los admins + WhatsApp |
+| `estado` | — | diagnóstico: `curl "https://alliumhealth.net/api.php?accion=estado"` |
+
+**Seguridad:** las acciones de admin comprueban la firma del token de Firebase
+contra los **certificados públicos** de Google (`illium_usuario_actual()`), y
+luego que el correo esté en `config.php → admins`. **No hay ninguna llave
+privada de Firebase en el hosting** — se intentó y se descartó a propósito:
+subir el service account a un hosting compartido es demasiado riesgo.
+
+**Correo:** sale del propio servidor (`mail()`, remitente
+`no-reply@alliumhealth.net`). No usa Resend ni ninguna API externa.
+
+**Restablecer contraseña:** ahora lo manda Firebase Authentication directamente
+(`sendPasswordResetEmail`), que funciona sin funciones. Se pierde el diseño de
+marca del correo, pero llega siempre.
+
+**Inventario:** `src/lib/stockPedido.ts` descuenta el stock desde la web al
+cerrar la venta. ⚠️ Las reglas de Firestore solo dejan escribir productos a
+usuarios **con sesión iniciada**: en una compra de invitado el stock NO baja y
+queda avisado en la consola. Para cubrirlo haría falta una de dos cosas, y
+ambas las tiene que decidir el dueño: (a) una regla que permita bajar SOLO el
+campo `stock`, o (b) el service account en el servidor.
+
+### Lo que SIGUE necesitando las Cloud Functions (o una llave)
+- **Stripe** (`createStripePaymentIntent`): hace falta la clave secreta
+  `sk_live_...` en `config.php`. Hoy `cardPaymentsEnabled` está en `false`, así
+  que el cliente no ve la opción y nada parece roto.
+- **WhatsApp**: hace falta el token permanente de Meta en `config.php →
+  meta_token` (el `meta_phone_id` ya está puesto).
+- **`createSubAdmin` y `adminDeleteUserAccount`**: crean/borran usuarios de
+  Firebase Authentication; eso solo se puede con el Admin SDK.
+
+---
+
 ## 1. Qué es el proyecto
 
 **ILLIUM** — ecommerce de **compuestos de investigación / péptidos** (marca ILLIUM,
