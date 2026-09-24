@@ -159,6 +159,15 @@ campo `stock`, o (b) el service account en el servidor.
 - **`createSubAdmin` y `adminDeleteUserAccount`**: crean/borran usuarios de
   Firebase Authentication; eso solo se puede con el Admin SDK.
 
+## 0.4 Cambios del 24-sep-2026 (audios del cliente) — publicados (`index-81l8FoLb.js`)
+- **Calculadora de péptidos NO pública**: `/calculator` envuelto en `CalculatorGate` (solo role admin/subadmin/worker; el resto va a `/shop`). Fuera del menú público; acceso en el menú del admin y en la pestaña del portal del socio.
+- **Portada**: título solo «Péptidos avanzados de investigación», insignias justo debajo (envío «EE.UU. y a cualquier país», «Ventas al por mayor»). Sin subtítulo de vías metabólicas.
+- **Categorías renombradas por compuesto** (Firestore `settings/general.categories` + `shop.cat.*`): Análogos GLP y péptidos · Péptidos BPC·TB·GHK · Neuropéptidos · NAD+ · Mezclas. Sus imágenes ahora son fotos de frascos ILLIUM (las viejas tenían venda, cerebro, «sterile injection»).
+- **Stacks**: dicen QUÉ incluyen (nombres de compuestos), no efectos. Banner «También vendemos al por mayor» → `/contact`.
+- Descripciones de NAD+ 500 y BPC+TB (10/20) reescritas en Firestore (`scripts/_textos-investigacion-2026-09-24.mjs`).
+- FAQ/contacto/login/chatbot/privacidad reencuadrados a investigación; el chatbot tiene regla obligatoria «sin dosis ni uso personal». Enlace «Docs» quitado del pie (mostraba el correo del admin).
+- **Regla para textos nuevos**: nunca beneficios, efectos ni objetivos (metabolismo, músculo, recuperación, longevidad, dosis…). Solo qué es el compuesto, pureza, COA y «solo investigación».
+
 ---
 
 ## 1. Qué es el proyecto
