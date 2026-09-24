@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Tag,
   Share2,
+  Calculator,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/i18n/I18nContext';
@@ -102,6 +103,8 @@ export function AdminLayout() {
     { name: es ? 'Pagos a Vendedores' : 'Vendor Payouts', path: '/admin/payouts', icon: BarChart3, superOnly: true },
     { name: t('admin.leads'), path: '/admin/leads', icon: Users, superOnly: false },
     { name: es ? 'Autenticidad' : 'Authenticity', path: '/admin/authenticity', icon: ShieldCheck, superOnly: false },
+    // La calculadora ya no es pública: solo admins y socios (24-sep-2026).
+    { name: es ? 'Calculadora de péptidos' : 'Peptide calculator', path: '/calculator', icon: Calculator, superOnly: false },
     { name: es ? 'Clases / Exámenes' : 'Training', path: '/admin/training', icon: BookOpen, superOnly: false },
     { name: es ? 'Contenido diario' : 'Daily Content', path: '/admin/content', icon: BookOpen, superOnly: false },
   ];

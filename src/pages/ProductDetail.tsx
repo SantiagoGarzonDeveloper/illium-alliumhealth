@@ -25,7 +25,7 @@ export function ProductDetail() {
   const lp = getLocalizedProduct(product, locale);
   const catKey = `shop.cat.${product.category.toLowerCase()}`;
   const catTr = t(catKey);
-  const categoryDisplay = locale === 'es' && catTr !== catKey ? catTr : product.category;
+  const categoryDisplay = catTr !== catKey ? catTr : product.category;
 
   const stock = Number(product.stock) || 0;
   const inCartQty = cart.find((i) => i.product.id === product.id)?.quantity || 0;

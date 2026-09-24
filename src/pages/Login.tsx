@@ -314,7 +314,7 @@ export function Login() {
                 {es ? 'Cliente' : 'Customer'}
               </h3>
               <p className="text-sm text-slate-500 leading-relaxed">
-                {es ? 'Quiero comprar productos y recibir recomendaciones personalizadas' : 'I want to buy products and get personalized recommendations'}
+                {es ? 'Quiero comprar compuestos de investigación para mi laboratorio' : 'I want to buy research compounds for my laboratory'}
               </p>
             </button>
 
@@ -530,7 +530,7 @@ export function Login() {
                       value={occupation}
                       onChange={(e) => setOccupation(e.target.value)}
                       className="input-premium"
-                      placeholder={es ? 'Ej. Entrenador, Coach, Nutricionista...' : 'E.g. Trainer, Coach, Nutritionist...'}
+                      placeholder={es ? 'Ej. Investigador, Distribuidor, Técnico de laboratorio...' : 'E.g. Researcher, Distributor, Lab technician...'}
                     />
                   </div>
                 </div>

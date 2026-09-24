@@ -63,11 +63,6 @@ export function Footer() {
                   {t('footer.contact')}
                 </Link>
               </li>
-              <li>
-                <Link to="/docs" className="hover:text-white transition-colors duration-200">
-                  Docs
-                </Link>
-              </li>
             </ul>
           </div>
 

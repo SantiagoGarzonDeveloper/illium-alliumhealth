@@ -36,11 +36,15 @@ export function FAQPage() {
         },
         {
           q: '¿Hacen envíos a todos los países?',
-          a: 'Enviamos a la mayoría de países. Consulta la página de Envíos para ver la lista actualizada y los tiempos estimados por región.',
+          a: 'Sí: enviamos rápido dentro de Estados Unidos y también a otros países. Consulta la página de Envíos para ver los tiempos estimados por región.',
         },
         {
           q: '¿Cuánto tarda el envío?',
-          a: 'Domésticos (EE.UU./MX/CO): 2–5 días hábiles. Internacionales: 7–15 días hábiles. Todos los envíos incluyen número de seguimiento.',
+          a: 'Estados Unidos: 2–5 días hábiles. Internacionales: 7–15 días hábiles según el país. Todos los envíos incluyen número de seguimiento.',
+        },
+        {
+          q: '¿Venden al por mayor?',
+          a: 'Sí. Atendemos pedidos al por mayor y por volumen para laboratorios e instituciones de investigación, con envío a Estados Unidos y a otros países. Escríbenos desde la página de Contacto para recibir una cotización.',
         },
         {
           q: '¿Qué métodos de pago aceptan?',
@@ -66,11 +70,15 @@ export function FAQPage() {
         },
         {
           q: 'Do you ship worldwide?',
-          a: 'We ship to most countries. Check the Shipping page for the updated list and regional ETAs.',
+          a: 'Yes: we ship fast within the USA and internationally. Check the Shipping page for regional delivery times.',
         },
         {
           q: 'How long does shipping take?',
-          a: 'Domestic (US/MX/CO): 2–5 business days. International: 7–15 business days. All shipments include tracking.',
+          a: 'USA: 2–5 business days. International: 7–15 business days depending on the country. All shipments include tracking.',
+        },
+        {
+          q: 'Do you offer wholesale?',
+          a: 'Yes. We handle wholesale and bulk orders for research laboratories and institutions, shipping to the USA and internationally. Contact us through the Contact page for a quote.',
         },
         {
           q: 'What payment methods are accepted?',
@@ -138,7 +146,7 @@ export function ShippingPage() {
         <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-5 text-center">
           <Truck className="h-6 w-6 text-brand-400 mx-auto mb-2" />
           <p className="text-sm font-semibold text-white">{es ? 'Envío rápido' : 'Fast shipping'}</p>
-          <p className="text-xs text-slate-400 mt-1">{es ? '2–5 días (nacional)' : '2–5 days (domestic)'}</p>
+          <p className="text-xs text-slate-400 mt-1">{es ? 'EE. UU. e internacional' : 'USA & international'}</p>
         </div>
         <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-5 text-center">
           <ShieldCheck className="h-6 w-6 text-brand-400 mx-auto mb-2" />
@@ -259,6 +267,11 @@ export function ContactPage() {
             {es
               ? 'Estamos aquí para responder tus preguntas sobre productos, envíos, el programa de socios o cualquier otra cosa. Usualmente respondemos en 24 horas hábiles.'
               : 'We are here to answer your questions about products, shipping, the partner program or anything else. We usually respond within 24 business hours.'}
+          </p>
+          <p className="text-slate-300 leading-relaxed mb-6">
+            {es
+              ? 'Pedidos al por mayor y por volumen disponibles para laboratorios e instituciones de investigación, con envío a Estados Unidos y a otros países. Escríbenos para cotizar.'
+              : 'Wholesale and bulk orders are available for research laboratories and institutions, shipping to the USA and internationally. Contact us for a quote.'}
           </p>
           <div className="space-y-4">
             <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
@@ -424,14 +437,14 @@ export function PrivacyPage() {
       <h2>1. {es ? 'Información que recopilamos' : 'Information we collect'}</h2>
       <ul>
         <li>{es ? 'Nombre, correo, teléfono WhatsApp y dirección de envío' : 'Name, email, WhatsApp phone, and shipping address'}</li>
-        <li>{es ? 'Respuestas del quiz y productos que compraste' : 'Quiz answers and products you purchased'}</li>
+        <li>{es ? 'Productos que compraste y mensajes que nos envías' : 'Products you purchased and messages you send us'}</li>
         <li>{es ? 'IP, navegador y datos técnicos básicos' : 'IP, browser and basic technical data'}</li>
       </ul>
 
       <h2>2. {es ? 'Cómo la usamos' : 'How we use it'}</h2>
       <ul>
         <li>{es ? 'Procesar y enviar tus pedidos' : 'Process and ship your orders'}</li>
-        <li>{es ? 'Generar recomendaciones personalizadas' : 'Generate personalized recommendations'}</li>
+        <li>{es ? 'Responder tus consultas y solicitudes de COA' : 'Respond to your inquiries and COA requests'}</li>
         <li>{es ? 'Calcular comisiones del programa de socios' : 'Calculate partner program commissions'}</li>
         <li>{es ? 'Notificaciones por WhatsApp (alertas de pedido)' : 'WhatsApp notifications (order alerts)'}</li>
       </ul>

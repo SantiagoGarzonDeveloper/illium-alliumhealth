@@ -40,8 +40,8 @@ function categorySlugFromPath(path: string): string | null {
   }
 }
 
-function localizedCategoryName(path: string, rawName: string, locale: Locale, t: (p: string) => string): string {
-  if (locale !== 'es') return rawName;
+function localizedCategoryName(path: string, rawName: string, _locale: Locale, t: (p: string) => string): string {
+  // Se traduce en ambos idiomas: los nombres de categoría viven en shop.cat.* (sin lenguaje de uso humano).
   const slug = categorySlugFromPath(path)?.toLowerCase();
   if (slug) {
     const key = `shop.cat.${slug}`;
@@ -66,8 +66,7 @@ function localizedCategoryName(path: string, rawName: string, locale: Locale, t:
   return rawName;
 }
 
-function localizedProductCategory(slug: string, locale: Locale, t: (p: string) => string): string {
-  if (locale !== 'es') return slug;
+function localizedProductCategory(slug: string, _locale: Locale, t: (p: string) => string): string {
   const key = `shop.cat.${slug.toLowerCase()}`;
   const tr = t(key);
   return tr === key ? slug : tr;
@@ -170,7 +169,7 @@ export function Home() {
           <span className="hidden md:inline text-white/40">·</span>
           <span className="flex items-center gap-2">✅ <span>{locale === 'es' ? 'Pureza 99%+ certificada' : '99%+ purity certified'}</span></span>
           <span className="hidden md:inline text-white/40">·</span>
-          <span className="flex items-center gap-2">⚡ <span>{locale === 'es' ? 'Stock de investigación limitado' : 'Limited research stock'}</span></span>
+          <span className="flex items-center gap-2">📦 <span>{locale === 'es' ? 'Ventas al por mayor' : 'Wholesale available'}</span></span>
           <span className="hidden lg:inline text-white/40">·</span>
           <span className="hidden lg:flex items-center gap-2">🚚 <span>{locale === 'es' ? `Envío gratis +$${freeShipMin}` : `Free shipping $${freeShipMin}+`}</span></span>
           <span className="hidden lg:inline text-white/40">·</span>
@@ -261,44 +260,41 @@ export function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 1 }}
             >
-              {locale === 'es' ? (
-                <>
-                  <span className="block">Péptidos avanzados de investigación</span>
-                  <span className="block bg-gradient-to-r from-brand-300 via-brand-400 to-emerald-300 bg-clip-text text-transparent mt-2">
-                    para estudio metabólico, neurológico
-                  </span>
-                  <span className="block text-slate-100 mt-1">
-                    &amp; regenerativo
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="block">Advanced research peptides</span>
-                  <span className="block bg-gradient-to-r from-brand-300 via-brand-400 to-emerald-300 bg-clip-text text-transparent mt-2">
-                    for metabolic, neurological
-                  </span>
-                  <span className="block text-slate-100 mt-1">
-                    &amp; regenerative study
-                  </span>
-                </>
-              )}
+              {/* Pedido del cliente (24-sep): solo el título, sin mencionar para qué se estudian */}
+              {locale === 'es' ? 'Péptidos avanzados de investigación' : 'Advanced research peptides'}
             </motion.h1>
 
-            {/* Subtitle */}
-            <motion.p
-              className="text-base md:text-lg text-slate-300 mb-8 max-w-2xl leading-relaxed"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+            {/* Trust badges - floating on video */}
+            <motion.div
+              className="flex flex-wrap gap-2.5 md:gap-3 text-[11px] md:text-xs text-slate-200 mb-10"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={{ delay: 0.5, duration: 0.8 }}
             >
-              {locale === 'es'
-                ? 'Vías metabólicas, reparación de tejidos, investigación cognitiva y más — compuestos de grado laboratorio, pureza 99%+.'
-                : 'Metabolic pathways, tissue repair, cognitive research and more — lab-grade compounds, 99%+ purity.'}
-            </motion.p>
-
+              <div className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 px-3 py-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" />
+                <span>{locale === 'es' ? 'Verificado por terceros' : '3rd-party tested'}</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 px-3 py-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" />
+                <span>99%+ {locale === 'es' ? 'pureza' : 'purity'}</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 px-3 py-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" />
+                <span>{locale === 'es' ? 'Envío rápido en EE.UU. y a cualquier país' : 'Fast shipping · USA & worldwide'}</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 px-3 py-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" />
+                <span>{locale === 'es' ? 'Compra segura' : 'Secure checkout'}</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 px-3 py-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" />
+                <span>{locale === 'es' ? 'Ventas al por mayor' : 'Wholesale available'}</span>
+              </div>
+            </motion.div>
             {/* CTAs */}
             <motion.div
-              className="flex flex-col sm:flex-row gap-3 mb-10"
+              className="flex flex-col sm:flex-row gap-3"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7, duration: 0.8 }}
@@ -322,30 +318,6 @@ export function Home() {
               </Link>
             </motion.div>
 
-            {/* Trust badges - floating on video */}
-            <motion.div
-              className="flex flex-wrap gap-2.5 md:gap-3 text-[11px] md:text-xs text-slate-300"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1, duration: 1 }}
-            >
-              <div className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 px-3 py-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" />
-                <span>{locale === 'es' ? 'Verificado por terceros' : '3rd-party tested'}</span>
-              </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 px-3 py-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" />
-                <span>99%+ {locale === 'es' ? 'pureza' : 'purity'}</span>
-              </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 px-3 py-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" />
-                <span>{locale === 'es' ? 'Envío rápido en EE.UU.' : 'Fast US shipping'}</span>
-              </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 px-3 py-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" />
-                <span>{locale === 'es' ? 'Compra segura' : 'Secure checkout'}</span>
-              </div>
-            </motion.div>
           </motion.div>
         </div>
 
@@ -371,7 +343,7 @@ export function Home() {
               {locale === 'es' ? 'Categorías' : 'Categories'}
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3 tracking-tight">
-              {locale === 'es' ? 'Elige tu objetivo' : 'Choose Your Goal'}
+              {locale === 'es' ? 'Explora por categoría' : 'Browse by category'}
             </h2>
             <div className="section-divider mt-4" />
           </div>
@@ -417,11 +389,12 @@ export function Home() {
                         {(() => {
                           const slug = categorySlugFromPath(cat.path)?.toLowerCase() || '';
                           const subs: Record<string, { es: string; en: string }> = {
-                            metabolic: { es: 'Vías metabólicas y señalización GLP', en: 'Metabolic pathways & GLP signaling' },
-                            recovery: { es: 'Reparación de tejidos y vías antiinflamatorias', en: 'Tissue repair & anti-inflammatory pathways' },
-                            nootropics: { es: 'Investigación neurológica y cognitiva', en: 'Neurological & cognitive research' },
-                            nad: { es: 'Metabolismo celular y NAD+', en: 'Cellular metabolism & NAD+' },
-                            blends: { es: 'Combinaciones premium', en: 'Premium combinations' },
+                            // Solo QUÉ compuestos hay en cada categoría, nunca para qué sirven.
+                            metabolic: { es: 'GLP, Tesamorelin, MOTS-C y más', en: 'GLP, Tesamorelin, MOTS-C & more' },
+                            recovery: { es: 'BPC-157, TB-500, GHK-Cu y más', en: 'BPC-157, TB-500, GHK-Cu & more' },
+                            nootropics: { es: 'Semax y Selank', en: 'Semax & Selank' },
+                            nad: { es: 'NAD+ 500 mg y 1000 mg', en: 'NAD+ 500 mg & 1000 mg' },
+                            blends: { es: 'Mezclas de compuestos', en: 'Compound blends' },
                             peptides: { es: 'Péptidos de investigación', en: 'Research peptides' },
                           };
                           const s = subs[slug];
@@ -570,7 +543,7 @@ export function Home() {
                 <Truck className="h-9 w-9 text-blue-700" />
               </div>
               <p className="text-4xl font-black text-slate-900 tracking-tight">2–5d</p>
-              <p className="text-sm text-slate-500 font-semibold mt-2">{locale === 'es' ? 'Envío rápido EE.UU.' : 'Fast U.S. shipping'}</p>
+              <p className="text-sm text-slate-500 font-semibold mt-2">{locale === 'es' ? 'Envío rápido EE.UU. e internacional' : 'Fast shipping · USA & international'}</p>
               <p className="text-[11px] text-slate-400 mt-1">{locale === 'es' ? 'Con tracking' : 'With tracking'}</p>
             </div>
             <div className="text-center">
@@ -707,35 +680,35 @@ export function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
               {
-                key: 'fat-loss',
-                title: locale === 'es' ? 'Metabolic Research Stack' : 'Metabolic Research Stack',
-                sub: locale === 'es' ? 'Vía GLP · Señalización del apetito · Metabolismo energético' : 'GLP pathway · Appetite signaling · Energy metabolism',
+                key: 'glp',
+                title: locale === 'es' ? 'Stack GLP de investigación' : 'GLP Research Stack',
+                sub: locale === 'es' ? 'Incluye compuestos de la línea GLP: GLP2-T, GLP3-R, MOTS-C y 5-Amino-1MQ · Viales con COA por lote' : 'Includes GLP-line compounds: GLP2-T, GLP3-R, MOTS-C & 5-Amino-1MQ · Vials with per-batch COA',
                 orig: 397,
                 price: 299,
                 ctaCat: 'metabolic',
                 color: 'from-red-500 to-orange-600',
-                icon: '🔥',
+                icon: '🧪',
               },
               {
-                key: 'performance',
-                title: locale === 'es' ? 'Anabolic Research Stack' : 'Anabolic Research Stack',
-                sub: locale === 'es' ? 'Miogénesis · Señalización muscular · Reparación de tejidos' : 'Myogenesis · Muscle signaling · Tissue repair',
+                key: 'analogs',
+                title: locale === 'es' ? 'Stack de análogos peptídicos' : 'Peptide Analog Stack',
+                sub: locale === 'es' ? 'Incluye Tesamorelin, CJC-1295, Ipamorelin y Sermorelin · Viales con COA por lote' : 'Includes Tesamorelin, CJC-1295, Ipamorelin & Sermorelin · Vials with per-batch COA',
                 orig: 427,
                 price: 319,
                 ctaCat: 'metabolic',
                 color: 'from-brand-500 to-brand-800',
-                icon: '💪',
+                icon: '⚗️',
                 badge: locale === 'es' ? 'MÁS POPULAR' : 'MOST POPULAR',
               },
               {
-                key: 'recovery',
-                title: locale === 'es' ? 'Regenerative Research Stack' : 'Regenerative Research Stack',
-                sub: locale === 'es' ? 'Reparación de tejidos · Vías antiinflamatorias · Investigación dérmica' : 'Tissue repair · Anti-inflammatory pathways · Dermal research',
+                key: 'bpc',
+                title: locale === 'es' ? 'Stack BPC · TB · GHK' : 'BPC · TB · GHK Stack',
+                sub: locale === 'es' ? 'Incluye BPC-157, TB-500 y GHK-Cu · Viales con COA por lote' : 'Includes BPC-157, TB-500 & GHK-Cu · Vials with per-batch COA',
                 orig: 277,
                 price: 209,
                 ctaCat: 'recovery',
                 color: 'from-blue-500 to-cyan-600',
-                icon: '🩹',
+                icon: '🔬',
               },
             ].map((b) => (
               <Link key={b.key} to={`/shop?category=${b.ctaCat}`} className="group block">
@@ -769,6 +742,28 @@ export function Home() {
                 </div>
               </Link>
             ))}
+          </div>
+
+          {/* Ventas al por mayor (pedido del cliente, 24-sep) */}
+          <div className="max-w-5xl mx-auto mt-10 rounded-3xl border-2 border-brand-200 bg-brand-50/60 p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand-700 mb-1">
+                {locale === 'es' ? 'Al por mayor' : 'Wholesale'}
+              </p>
+              <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+                {locale === 'es' ? 'También vendemos al por mayor' : 'We also sell wholesale'}
+              </h3>
+              <p className="text-sm text-slate-600 mt-1">
+                {locale === 'es'
+                  ? 'Precios por volumen para laboratorios y distribuidores. Envíos a EE.UU. y a cualquier país.'
+                  : 'Volume pricing for laboratories and distributors. Shipping to the USA and worldwide.'}
+              </p>
+            </div>
+            <Link to="/contact" className="shrink-0">
+              <Button className="bg-slate-900 hover:bg-brand-700 text-white rounded-full h-12 px-8 text-sm font-bold">
+                {locale === 'es' ? 'Cotizar al por mayor' : 'Request wholesale pricing'} <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

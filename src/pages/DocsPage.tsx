@@ -408,8 +408,8 @@ export function DocsPage() {
               </li>
               <li>
                 <strong>{es ? 'Suscripciones' : 'Subscriptions'}</strong>: {es
-                  ? 'planes mensuales automáticos para Stack fijos (Fat Loss, Performance, Recovery).'
-                  : 'automatic monthly plans for fixed Stacks (Fat Loss, Performance, Recovery).'}
+                  ? 'planes mensuales automáticos para kits de investigación fijos.'
+                  : 'automatic monthly plans for fixed research kits.'}
               </li>
               <li>
                 <strong>{es ? 'Pasarelas alternativas' : 'Alternative gateways'}</strong>: {es

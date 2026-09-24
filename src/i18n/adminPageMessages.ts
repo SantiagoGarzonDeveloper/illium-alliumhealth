@@ -238,17 +238,17 @@ export const adminPageEn = {
   },
   chatbot: {
     welcome:
-      "What are you looking to achieve? I'll help you choose the best protocol.",
+      'Hi! I can help you find research compounds in our catalog, Certificates of Analysis and ordering details.',
     title: 'Lab Assistant AI',
-    placeholder: 'Ask about products, dosing…',
+    placeholder: 'Ask about products, COAs, shipping…',
     error:
       "I'm having trouble connecting to the AI right now. Please try again in a moment.",
     catalogHeader: '## Current catalog',
     catalogLine: '- **{name}** (id: `{id}`, {price} USD, {category})',
     systemSuffixEn:
-      '\n\nAlways format your replies using **Markdown** (bold, bullet lists) when helpful. Reply in English unless the user writes entirely in Spanish—then you may answer in Spanish for that turn only. Never mix both languages in one reply.',
+      '\n\nAlways format your replies using **Markdown** (bold, bullet lists) when helpful. Reply in English unless the user writes entirely in Spanish—then you may answer in Spanish for that turn only. Never mix both languages in one reply. MANDATORY: ILLIUM products are laboratory research compounds for in vitro research use only — not for human or animal consumption. Never give dosing, injection, administration or personal-use guidance, and never describe human benefits (weight loss, muscle, recovery, anti-aging, sleep, libido, skin, etc.). Describe compounds only by their studied mechanisms or research pathways. For bulk or wholesale research orders, invite the user to contact the team via the Contact page.',
     systemSuffixEs:
-      '\n\nAlways format your replies using **Markdown** (bold, bullet lists) when helpful. The storefront is in Spanish: reply in Spanish only, even if the user writes a few English words. Do not mirror long English paragraphs unless you are quoting them briefly.',
+      '\n\nAlways format your replies using **Markdown** (bold, bullet lists) when helpful. The storefront is in Spanish: reply in Spanish only, even if the user writes a few English words. Do not mirror long English paragraphs unless you are quoting them briefly. MANDATORY: ILLIUM products are laboratory research compounds for in vitro research use only — not for human or animal consumption. Never give dosing, injection, administration or personal-use guidance, and never describe human benefits (weight loss, muscle, recovery, anti-aging, sleep, libido, skin, etc.). Describe compounds only by their studied mechanisms or research pathways. For bulk or wholesale research orders, invite the user to contact the team via the Contact page.',
   },
 } as const;
 
@@ -491,15 +491,15 @@ export const adminPageEs = {
   },
   chatbot: {
     welcome:
-      '¿Qué estás buscando lograr? Te ayudo a elegir el mejor protocolo.',
+      '¡Hola! Te ayudo a encontrar compuestos de investigación del catálogo, Certificados de Análisis y detalles de pedido.',
     title: 'Asistente ILLIUM',
-    placeholder: 'Pregunta por productos, dosis…',
+    placeholder: 'Pregunta por productos, COA, envíos…',
     error: 'No puedo conectar con la IA en este momento. Inténtalo de nuevo en unos segundos.',
     catalogHeader: '## Catálogo actual',
     catalogLine: '- **{name}** (id: `{id}`, {price} USD, {category})',
     systemSuffixEn:
-      '\n\nUsa **Markdown** cuando ayude. Responde en inglés salvo que el usuario escriba todo en español; en ese caso puedes usar español solo en esa respuesta. No mezcles idiomas en un mismo mensaje.',
+      '\n\nUsa **Markdown** cuando ayude. Responde en inglés salvo que el usuario escriba todo en español; en ese caso puedes usar español solo en esa respuesta. No mezcles idiomas en un mismo mensaje. MANDATORY: ILLIUM products are laboratory research compounds for in vitro research use only — not for human or animal consumption. Never give dosing, injection, administration or personal-use guidance, and never describe human benefits (weight loss, muscle, recovery, anti-aging, sleep, libido, skin, etc.). Describe compounds only by their studied mechanisms or research pathways. For bulk or wholesale research orders, invite the user to contact the team via the Contact page.',
     systemSuffixEs:
-      '\n\nUsa **Markdown** cuando ayude. La tienda está en español: responde solo en español aunque el usuario mezcle palabras en inglés. No copies párrafos largos en inglés salvo citas breves.',
+      '\n\nUsa **Markdown** cuando ayude. La tienda está en español: responde solo en español aunque el usuario mezcle palabras en inglés. No copies párrafos largos en inglés salvo citas breves. MANDATORY: ILLIUM products are laboratory research compounds for in vitro research use only — not for human or animal consumption. Never give dosing, injection, administration or personal-use guidance, and never describe human benefits (weight loss, muscle, recovery, anti-aging, sleep, libido, skin, etc.). Describe compounds only by their studied mechanisms or research pathways. For bulk or wholesale research orders, invite the user to contact the team via the Contact page.',
   },
 } as const;

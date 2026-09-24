@@ -7,6 +7,7 @@ import { ProductList } from './pages/ProductList';
 import { ProductDetail } from './pages/ProductDetail';
 import { Cart } from './pages/Cart';
 import { PeptideCalculator } from './pages/PeptideCalculator';
+import { CalculatorGate } from './components/auth/CalculatorGate';
 import { AdminLayout } from './pages/admin/AdminLayout';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminProducts } from './pages/admin/AdminProducts';
@@ -124,7 +125,8 @@ function App() {
         <Route path="/cart" element={<><Navbar /><main className="flex-1"><Cart /></main><Footer /><ChatbotWidget /></>} />
         {/* El cuestionario se eliminó — los enlaces viejos van al catálogo */}
         <Route path="/quiz" element={<Navigate to="/shop" replace />} />
-        <Route path="/calculator" element={<><Navbar /><main className="flex-1"><PeptideCalculator /></main><Footer /></>} />
+        {/* Calculadora: solo admins y socios (no pública) */}
+        <Route path="/calculator" element={<CalculatorGate><Navbar /><main className="flex-1"><PeptideCalculator /></main><Footer /></CalculatorGate>} />
         <Route path="/login" element={<><Navbar /><main className="flex-1"><Login /></main><Footer /></>} />
         <Route path="/profile" element={<><Navbar /><main className="flex-1"><UserProfile /></main><Footer /></>} />
         <Route path="/orders" element={<><Navbar /><main className="flex-1"><MyOrders /></main><Footer /></>} />

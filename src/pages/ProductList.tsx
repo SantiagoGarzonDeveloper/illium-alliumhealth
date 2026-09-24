@@ -46,13 +46,11 @@ export function ProductList() {
             const product = group.representative;
             const hasMultipleVariants = group.variants.length > 1;
             const lp = getLocalizedProduct(product, locale);
-            const catLabel = locale === 'es'
-              ? (() => {
-                  const key = `shop.cat.${product.category.toLowerCase()}`;
-                  const tr = t(key);
-                  return tr === key ? product.category : tr;
-                })()
-              : product.category;
+            const catLabel = (() => {
+              const key = `shop.cat.${product.category.toLowerCase()}`;
+              const tr = t(key);
+              return tr === key ? product.category : tr;
+            })();
             const eff = getEffectivePrice(product);
             return (
               <Link key={`${group.category}-${group.baseName}`} to={`/product/${product.id}`} className="group block">
