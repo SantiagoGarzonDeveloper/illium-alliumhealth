@@ -7,6 +7,87 @@
 
 ---
 
+## ⭐ EMPIEZA AQUÍ — estado al 25-sep-2026 (léelo entero antes de tocar nada)
+
+**Quién pide los cambios:** Santiago (dueño de la cuenta de desarrollo) reenvía lo que
+pide el cliente de ILLIUM, casi siempre como **audios de WhatsApp (.ogg) y capturas en el
+Escritorio** (`~/Desktop/*elrey*.ogg`, `~/Desktop/elrey*.jpeg`) o como una lista pegada.
+Para los audios: `ffmpeg -i X.ogg -ar 16000 -ac 1 X.wav` y
+`whisper-cli -m ~/.cache/whisper-models/ggml-medium.bin -l es -nt -f X.wav`.
+Quiere que **se haga todo, se publique y se verifique en vivo**, sin excusas, y al
+final una **tabla "pedido → hecho → dónde revisarlo"**.
+
+### Situación de un vistazo
+| Pieza | Estado |
+|---|---|
+| Web pública (SiteGround, FTP) | ✅ funciona. Último build publicado: `index-81l8FoLb.js` (24-sep) |
+| Firestore (productos, pedidos, ajustes) | ✅ funciona (plan Spark) |
+| Firebase Storage | ❌ muerto (402, facturación cerrada) → los medios viven en el dominio (§0.1) |
+| Cloud Functions | ❌ 503 y no se pueden redesplegar → reemplazadas por PHP (§0.3) |
+| Correos / OTP / facturas / avisos de pedido | ✅ por `api.php` (PHP en SiteGround) |
+| WhatsApp automático | ⏸ falta `meta_token` en `illium-privado/config.php` |
+| Pago con tarjeta (Stripe) | ⏸ falta `sk_live_…`; `cardPaymentsEnabled=false` (oculto) |
+| Crear/borrar usuarios del panel | ❌ necesita Admin SDK (facturación) |
+
+### Cómo publicar HOY (la facturación está cerrada)
+```bash
+npm run build && ./deploy-ftp.sh      # o: ./publicar.sh --web
+# verificar que el sitio vivo sirve el build nuevo:
+curl -sS "https://alliumhealth.net/?n=$RANDOM" | grep -oE 'index-[A-Za-z0-9_-]+\.js'
+grep -oE 'index-[A-Za-z0-9_-]+\.js' dist/index.html
+curl -sS "https://alliumhealth.net/api.php?accion=estado"   # backend PHP
+```
+❌ **No** uses `./publicar.sh` a secas ni `--funciones`: intenta desplegar Cloud
+Functions y falla por la facturación. Reglas de Firestore sí: `firebase deploy --only
+firestore:rules --project monaco-community`.
+
+### Cambiar datos de la base (productos, categorías, textos de ajustes)
+Scripts admin en `scripts/*.mjs` con el service account que está **fuera del repo**
+(`../monaco-community-firebase-adminsdk-*.json`, lo resuelve
+`scripts/resolve-firebase-credentials.mjs`). Ejemplos del 24-sep:
+`scripts/_textos-investigacion-2026-09-24.mjs` y `scripts/_categorias-fotos-2026-09-24.mjs`.
+Antes de sobrescribir, guarda un respaldo JSON **fuera del repo** (tiene datos privados).
+
+### Verificar como lo haría el cliente
+Hay que aceptar primero la ventana de edad (21+) y elegir idioma. Revisar en ES y EN:
+portada (35 imágenes, 0 rotas; `#catalogo` con 23 productos), `/shop`, una ficha
+`/product/:id`, `/quiz` → `/shop`, `/calculator` sin sesión → `/shop`.
+Chequeo rápido de palabras prohibidas en el texto visible: metabol, appetite/apetito,
+anabolic, muscle/músculo, goal/objetivo, longevity, healing/sanación, recovery,
+vitality, dose/dosis, calculator, quiz, consult, inject, weight/peso, fat/grasa.
+(«packaging» da falso positivo con «aging».)
+
+### 🚫 Reglas de CONTENIDO (legal — el cliente insiste mucho)
+- La web es **solo investigación de laboratorio**. Nunca beneficios, efectos, objetivos,
+  resultados en el cuerpo, dosis, inyección, "para hombres/mujeres", testimonios.
+- Describe solo **qué es** el compuesto, pureza, COA por lote, presentación
+  (liofilizado) y «solo investigación».
+- Los avisos «NO para consumo humano» **se quedan** (son los que protegen).
+- Envío: **«EE.UU. y a cualquier país»**. Se vende **al por mayor** (→ `/contact`).
+- La calculadora de péptidos es **privada** (`CalculatorGate`: admin/subadmin/worker).
+- Imágenes: solo frascos ILLIUM; nada de personas, vendas, cerebros, «sterile injection».
+
+### Pendientes que DECIDE el dueño (no hacer sin su respuesta)
+1. **Dominio**: el cliente dice que la marca es ILLIUM y que la gente no encuentra la web
+   porque el dominio dice «allium». Dijo «ya lo hice nuevo» → falta que diga **qué
+   dominio compró** (illium.com es de un tercero). Luego: apuntarlo a SiteGround,
+   redirigir alliumhealth.net → nuevo, y cambiar `alliumhealth.net` en `index.html`,
+   `public/api.php`, `public/subir.php` (lista `$ORIGENES`), `src/lib/sharedCart.ts`,
+   `AdminAuthenticity.tsx` (URL de los QR: ¡los QR ya impresos apuntan al dominio
+   viejo, mantener la redirección!), `generateCoaPdf.ts`, `InvoiceModal.tsx`,
+   Firestore `settings/general.publicSiteUrl` y URLs de medios en productos.
+2. **Qué trae cada combo** (Stack GLP $299, análogos $319, BPC·TB·GHK $209): se listaron
+   los compuestos de cada categoría; confirmar composición real.
+3. **Fotos con marca registrada**: `illium-retatrutide.png` y `illium-tirzepatide.png`
+   muestran «Retatrutide»/«Tirzepatide» en el frasco (productos GLP3-R / GLP2-T).
+4. **Edad**: `Login.tsx` dice 18+, el resto del sitio 21+.
+5. **Stock en compras de invitado** (regla de Firestore) y **llaves** de Meta/Stripe (§0.3).
+6. `/consulta` sigue enrutada (sin enlace) con una sugerencia de «protocolos».
+7. Los 7 productos con tarjeta de marca generada esperan su foto real (se sube desde
+   Admin → Productos; va por `subir.php`).
+
+---
+
 ## 0. ⚡ CÓMO PUBLICAR (leer siempre antes de tocar nada)
 
 **El usuario de este proyecto NO es técnico.** No le pidas que ejecute comandos en su
@@ -23,6 +104,8 @@ página"*, *"que se vea en el sitio"*, *"ya quedó, súbelo"* → **ejecuta dire
 Ese script hace TODO: instala dependencias, construye, sube `dist/` por FTP a
 SiteGround, publica las reglas de Firestore/Storage, despliega las Cloud Functions y
 verifica contra el sitio en vivo. Variantes: `--web` (solo la página) y `--funciones`.
+⚠️ **Mientras la facturación siga cerrada usa `./publicar.sh --web` o
+`npm run build && ./deploy-ftp.sh`** (ver «EMPIEZA AQUÍ»).
 
 Reglas:
 - ❌ **NUNCA** `firebase deploy --only hosting` — el sitio público se sirve desde
@@ -446,6 +529,7 @@ Al generar el protocolo de un pedido, la IA recibe **por cada producto** (de Fir
 ---
 
 ## 11. Pendientes conocidos
+- Ver la lista «Pendientes que DECIDE el dueño» en «EMPIEZA AQUÍ» (arriba del todo).
 - Video tutorial para trabajadores (infra: `scripts/build-tutorial-video.mjs`).
 - Activar WhatsApp en producción (plantillas `illium_*`, `metaWhatsappPhoneNumberId`,
   secret `META_WHATSAPP_TOKEN`).
