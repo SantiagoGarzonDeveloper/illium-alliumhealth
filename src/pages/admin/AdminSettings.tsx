@@ -10,11 +10,11 @@ import { Trash2, Plus, Loader2, ImageIcon, Upload, UserPlus, Shield } from 'luci
 import { Dialog } from '@/components/ui/dialog';
 import { useI18n } from '@/i18n/I18nContext';
 
+// 29-sep: la portada solo muestra dos categorías (todos los péptidos y al por mayor).
+// Solo se tienen en cuenta entradas con ruta /shop o /shop?category=wholesale.
 const DEFAULT_CATEGORIES = [
-  { name: 'Peptides', color: 'bg-emerald-100 text-emerald-700', path: '/shop?category=peptides', imageUrl: '' },
-  { name: 'NAD+', color: 'bg-amber-100 text-amber-700', path: '/shop?category=nad', imageUrl: '' },
-  { name: 'Nootropics', color: 'bg-blue-100 text-blue-700', path: '/shop?category=nootropics', imageUrl: '' },
-  { name: 'Recovery', color: 'bg-purple-100 text-purple-700', path: '/shop?category=recovery', imageUrl: '' },
+  { name: 'Shop All Peptides', nameEs: 'Todos los péptidos', color: 'bg-slate-900 text-white', path: '/shop', imageUrl: 'https://alliumhealth.net/product-images/illium-bpc157-tb500.png' },
+  { name: 'Wholesale', nameEs: 'Al por mayor', color: 'bg-slate-900 text-white', path: '/shop?category=wholesale', imageUrl: 'https://alliumhealth.net/product-images/illium-glow.png' },
 ];
 
 export function AdminSettings() {

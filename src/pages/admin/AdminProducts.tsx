@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Pencil, Trash2, Image as ImageIcon, Loader2, ArrowLeft } from 'lucide-react';
+import { Plus, Pencil, Trash2, Image as ImageIcon, Loader2, ArrowLeft, FileText, X } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, doc, deleteDoc, setDoc, addDoc, writeBatch, deleteField } from 'firebase/firestore';
 import { getEffectivePrice } from '@/lib/pricing';
@@ -12,6 +12,8 @@ import { useAppStore, useToastStore } from '@/store';
 import { Dialog } from '@/components/ui/dialog';
 import { Combobox } from '@/components/ui/combobox';
 import { useI18n } from '@/i18n/I18nContext';
+import { isPdfUrl } from '@/lib/coa';
+import { GENERAL_CATEGORY, WHOLESALE_CATEGORY } from '@/lib/catalogCategories';
 
 function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
   return (
@@ -39,6 +41,29 @@ export function AdminProducts() {
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coaInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingCoa, setUploadingCoa] = useState(false);
+
+  /** COA del producto (imagen o PDF) → subir.php, carpeta /medios/coa/. */
+  const handleCoaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadingCoa(true);
+    try {
+      const url = await uploadMedia(file, 'coa');
+      setCurrentProduct((prev) => ({ ...prev, coaUrl: url }));
+      showToast(locale === 'es' ? '✓ COA subido. Pulsa «Guardar» para publicarlo.' : '✓ COA uploaded. Press “Save” to publish it.');
+    } catch (error) {
+      console.error('Error uploading COA:', error);
+      showDialog(
+        locale === 'es' ? 'No se pudo subir el COA' : 'Could not upload the COA',
+        error instanceof Error ? error.message : String(error),
+      );
+    } finally {
+      setUploadingCoa(false);
+    }
+  };
 
   const showDialog = (title: string, description: string) => {
     setDialogMessage({ title, description });
@@ -87,6 +112,7 @@ export function AdminProducts() {
         dosageNote: currentProduct.dosageNote ?? '',
         protocol: currentProduct.protocol ?? '',
         monthsSupplyPerVial: Number(currentProduct.monthsSupplyPerVial) || 1,
+        coaUrl: (currentProduct.coaUrl || '').trim(),
       };
       if (hasDiscount) {
         payload.discountType = dType;
@@ -183,13 +209,18 @@ export function AdminProducts() {
             <Combobox
               value={currentProduct.category || ''}
               onChange={(v) => setCurrentProduct({ ...currentProduct, category: v })}
+              // 29-sep: solo dos categorías (pedido del cliente).
               options={[
-                { value: 'metabolic', label: 'Metabolic & Physical', sublabel: 'Fat loss, body composition' },
-                { value: 'recovery', label: 'Recovery & Regeneration', sublabel: 'Healing, tissue repair' },
-                { value: 'nootropics', label: 'Nootropics (Cognitive)', sublabel: 'Focus, mental performance' },
-                { value: 'nad', label: 'NAD+', sublabel: 'Energy, longevity' },
-                { value: 'peptides', label: 'Peptides (General)', sublabel: 'Other peptides' },
-                { value: 'blends', label: 'Custom Blends', sublabel: 'Premium combinations' },
+                {
+                  value: GENERAL_CATEGORY,
+                  label: locale === 'es' ? 'All products · Todos los productos' : 'All products',
+                  sublabel: locale === 'es' ? 'Sale en «Shop All Peptides»' : 'Shown under “Shop All Peptides”',
+                },
+                {
+                  value: WHOLESALE_CATEGORY,
+                  label: 'Wholesale / Al por mayor',
+                  sublabel: locale === 'es' ? 'Sale en la pestaña «Wholesale»' : 'Shown under the “Wholesale” tab',
+                },
               ]}
               placeholder="— Select category —"
             />
@@ -453,6 +484,63 @@ export function AdminProducts() {
                 </>
               )}
             </div>
+          </div>
+
+          {/* COA del producto — se muestra en la ficha y en /lab-results */}
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 space-y-3" data-admin-coa>
+            <FieldLabel htmlFor="product-coa-url">
+              {locale === 'es' ? 'Certificado de Análisis (COA) — imagen o PDF' : 'Certificate of Analysis (COA) — image or PDF'}
+            </FieldLabel>
+            <input
+              type="file"
+              ref={coaInputRef}
+              className="hidden"
+              accept="image/*,application/pdf"
+              onChange={handleCoaUpload}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" onClick={() => coaInputRef.current?.click()} disabled={uploadingCoa}>
+                {uploadingCoa ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <FileText className="w-4 h-4 mr-1.5" />}
+                {currentProduct.coaUrl
+                  ? (locale === 'es' ? 'Cambiar COA' : 'Replace COA')
+                  : (locale === 'es' ? 'Subir COA' : 'Upload COA')}
+              </Button>
+              {currentProduct.coaUrl && (
+                <>
+                  <a
+                    href={currentProduct.coaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-semibold text-emerald-700 hover:underline"
+                  >
+                    {isPdfUrl(currentProduct.coaUrl)
+                      ? (locale === 'es' ? 'Ver PDF actual' : 'View current PDF')
+                      : (locale === 'es' ? 'Ver imagen actual' : 'View current image')}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentProduct({ ...currentProduct, coaUrl: '' })}
+                    className="inline-flex items-center gap-1 text-sm text-red-600 hover:underline"
+                  >
+                    <X className="w-3.5 h-3.5" /> {locale === 'es' ? 'Quitar' : 'Remove'}
+                  </button>
+                </>
+              )}
+            </div>
+            {currentProduct.coaUrl && !isPdfUrl(currentProduct.coaUrl) && (
+              <img src={currentProduct.coaUrl} alt="COA" className="h-40 object-contain rounded border border-slate-200 bg-white" />
+            )}
+            <Input
+              id="product-coa-url"
+              value={currentProduct.coaUrl || ''}
+              onChange={(e) => setCurrentProduct({ ...currentProduct, coaUrl: e.target.value })}
+              placeholder="https://alliumhealth.net/medios/coa/…"
+            />
+            <FieldHint>
+              {locale === 'es'
+                ? 'Sube el COA (JPG, PNG o PDF, máx. 25 MB) o pega su enlace. Luego pulsa «Guardar». Si lo dejas vacío, la web muestra «COA disponible bajo solicitud».'
+                : 'Upload the COA (JPG, PNG or PDF, max 25 MB) or paste its link, then press “Save”. If empty, the site shows “COA available on request”.'}
+            </FieldHint>
           </div>
 
           <div>

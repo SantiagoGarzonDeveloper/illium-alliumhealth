@@ -37,7 +37,7 @@ import { DocsPage } from './pages/DocsPage';
 import { Donaton } from './pages/Donaton';
 import { Consulta } from './pages/Consulta';
 import { Login } from './pages/Login';
-import { ChatbotWidget } from './components/chatbot/ChatbotWidget';
+// 29-sep: chat eliminado a pedido del cliente (ChatbotWidget ya no se monta en ninguna ruta).
 import { ToastHost } from './components/ui/toast-host';
 import { ReferralNotice } from './components/ReferralNotice';
 import { LanguageAgeGates } from './components/gates/LanguageAgeGates';
@@ -119,10 +119,10 @@ function App() {
         {/* Public Routes */}
         <Route path="/es" element={<LocaleRedirect lang="es" />} />
         <Route path="/en" element={<LocaleRedirect lang="en" />} />
-        <Route path="/" element={<><Navbar /><main className="flex-1"><Home /></main><Footer /><ChatbotWidget /></>} />
-        <Route path="/shop" element={<><Navbar /><main className="flex-1"><ProductList /></main><Footer /><ChatbotWidget /></>} />
-        <Route path="/product/:id" element={<><Navbar /><main className="flex-1"><ProductDetail /></main><Footer /><ChatbotWidget /></>} />
-        <Route path="/cart" element={<><Navbar /><main className="flex-1"><Cart /></main><Footer /><ChatbotWidget /></>} />
+        <Route path="/" element={<><Navbar /><main className="flex-1"><Home /></main><Footer /></>} />
+        <Route path="/shop" element={<><Navbar /><main className="flex-1"><ProductList /></main><Footer /></>} />
+        <Route path="/product/:id" element={<><Navbar /><main className="flex-1"><ProductDetail /></main><Footer /></>} />
+        <Route path="/cart" element={<><Navbar /><main className="flex-1"><Cart /></main><Footer /></>} />
         {/* El cuestionario se eliminó — los enlaces viejos van al catálogo */}
         <Route path="/quiz" element={<Navigate to="/shop" replace />} />
         {/* Calculadora: solo admins y socios (no pública) */}
@@ -130,12 +130,12 @@ function App() {
         <Route path="/login" element={<><Navbar /><main className="flex-1"><Login /></main><Footer /></>} />
         <Route path="/profile" element={<><Navbar /><main className="flex-1"><UserProfile /></main><Footer /></>} />
         <Route path="/orders" element={<><Navbar /><main className="flex-1"><MyOrders /></main><Footer /></>} />
-        <Route path="/faq" element={<><Navbar /><main className="flex-1"><FAQPage /></main><Footer /><ChatbotWidget /></>} />
-        <Route path="/shipping" element={<><Navbar /><main className="flex-1"><ShippingPage /></main><Footer /><ChatbotWidget /></>} />
-        <Route path="/contact" element={<><Navbar /><main className="flex-1"><ContactPage /></main><Footer /><ChatbotWidget /></>} />
+        <Route path="/faq" element={<><Navbar /><main className="flex-1"><FAQPage /></main><Footer /></>} />
+        <Route path="/shipping" element={<><Navbar /><main className="flex-1"><ShippingPage /></main><Footer /></>} />
+        <Route path="/contact" element={<><Navbar /><main className="flex-1"><ContactPage /></main><Footer /></>} />
         <Route path="/terms" element={<><Navbar /><main className="flex-1"><TermsPage /></main><Footer /></>} />
         <Route path="/terms-of-sale" element={<><Navbar /><main className="flex-1"><TermsOfSalePage /></main><Footer /></>} />
-        <Route path="/lab-results" element={<><Navbar /><main className="flex-1"><LabResultsPage /></main><Footer /><ChatbotWidget /></>} />
+        <Route path="/lab-results" element={<><Navbar /><main className="flex-1"><LabResultsPage /></main><Footer /></>} />
         <Route path="/privacy" element={<><Navbar /><main className="flex-1"><PrivacyPage /></main><Footer /></>} />
         <Route path="/docs" element={<><Navbar /><main className="flex-1"><DocsPage /></main><Footer /></>} />
         {/* Standalone campaign page — no navbar/footer/chatbot for an immersive experience */}

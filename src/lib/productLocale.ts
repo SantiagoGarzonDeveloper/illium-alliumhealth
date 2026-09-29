@@ -1,5 +1,6 @@
 import type { Product } from '@/store';
 import type { Locale } from '@/i18n/translations';
+import { isDeadStorageUrl } from '@/lib/uploadMedia';
 
 function parseBenefits(v: unknown): string[] {
   if (Array.isArray(v)) return v.map(String).filter(Boolean);
@@ -48,6 +49,12 @@ export function normalizeProductFromFirestore(id: string, raw: Record<string, un
       raw.discountValue != null && !Number.isNaN(Number(raw.discountValue))
         ? Number(raw.discountValue)
         : undefined,
+    // COA del producto (imagen o PDF). Las URLs viejas de Firebase Storage ya no
+    // cargan (402), así que se descartan y se muestra «COA bajo solicitud».
+    coaUrl: (() => {
+      const u = raw.coaUrl != null ? String(raw.coaUrl).trim() : '';
+      return u && !isDeadStorageUrl(u) ? u : undefined;
+    })(),
   };
 }
 

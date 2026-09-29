@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Mail, MessageCircle, Clock, Truck, RotateCcw, ShieldCheck, FileText, Lock, ChevronDown, Send } from 'lucide-react';
 import { useToastStore, useAppStore } from '@/store';
 import { getLocalizedProduct } from '@/lib/productLocale';
+import { CoaFullscreen } from '@/components/coa/CoaViewer';
+import { isWholesale } from '@/lib/catalogCategories';
 
 function PageShell({ title, kicker, children }: { title: string; kicker?: string; children: React.ReactNode }) {
   return (
@@ -551,10 +553,21 @@ export function TermsOfSalePage() {
 }
 
 // ── Lab Results / Certificates of Analysis (CoA) ────────────
+// 29-sep: cada tarjeta abre el COA real del producto (product.coaUrl, subido desde
+// Admin → Productos). Si todavía no hay archivo: «COA bajo solicitud».
 export function LabResultsPage() {
   const { locale } = useI18n();
   const es = locale === 'es';
   const products = useAppStore((s) => s.products);
+  const [viewer, setViewer] = useState<{ url: string; name: string } | null>(null);
+  const sorted = [...products].sort((a, b) => {
+    const w = Number(isWholesale(a)) - Number(isWholesale(b));
+    if (w !== 0) return w;
+    const c = Number(!a.coaUrl) - Number(!b.coaUrl);
+    if (c !== 0) return c;
+    return a.name.trim().localeCompare(b.name.trim());
+  });
+  const withCoa = products.filter((p) => p.coaUrl).length;
   return (
     <PageShell
       title={es ? 'Certificados de Análisis' : 'Certificates of Analysis'}
@@ -566,34 +579,50 @@ export function LabResultsPage() {
           : 'All ILLIUM compounds are independently tested. Below you will find the most recent Certificates of Analysis (CoA) for each product lot, including HPLC and Mass Spectrometry results.'}
       </p>
 
-      <div className="not-prose mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="not-prose mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4" data-coa-library data-coa-count={withCoa}>
         {products.length === 0 ? (
           <p className="text-sm text-slate-400">
             {es ? 'Cargando compuestos…' : 'Loading compounds…'}
           </p>
         ) : (
-          products.map((p) => {
+          sorted.map((p) => {
             const { name } = getLocalizedProduct(p, locale);
             return (
               <div
                 key={p.id}
+                data-coa-card={p.coaUrl ? 'available' : 'on-request'}
                 className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
               >
                 <div className="flex items-start gap-3">
                   <div className="h-10 w-10 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center shrink-0">
                     <ShieldCheck className="h-5 w-5 text-brand-400" />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h3 className="text-white text-base font-bold truncate">{name}</h3>
                     <p className="text-xs text-slate-400 mt-1">
                       {es ? 'Pureza' : 'Purity'}: 99%+ · {es ? 'Método' : 'Method'}: HPLC + MS
                     </p>
-                    <Link
-                      to={`/product/${p.id}`}
-                      className="inline-block mt-3 text-xs font-semibold text-brand-400 hover:text-brand-300"
-                    >
-                      {es ? 'Ver compuesto →' : 'View compound →'}
-                    </Link>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                      {p.coaUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => setViewer({ url: p.coaUrl as string, name })}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 hover:bg-brand-500 px-3.5 py-1.5 text-xs font-bold text-white transition-colors"
+                        >
+                          <FileText className="h-3.5 w-3.5" /> {es ? 'Ver COA' : 'View COA'}
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-[11px] font-semibold text-brand-200">
+                          {es ? 'COA bajo solicitud' : 'COA on request'}
+                        </span>
+                      )}
+                      <Link
+                        to={`/product/${p.id}#coa`}
+                        className="text-xs font-semibold text-brand-400 hover:text-brand-300"
+                      >
+                        {es ? 'Ver compuesto →' : 'View compound →'}
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -605,13 +634,16 @@ export function LabResultsPage() {
       <h2>{es ? 'Solicitar el CoA de un lote' : 'Request a lot CoA'}</h2>
       <p>
         {es
-          ? 'El Certificado de Análisis específico de tu lote se incluye con cada envío. Para solicitar el PDF del CoA de un lote concreto antes de comprar, escríbenos a '
-          : 'The Certificate of Analysis specific to your lot is included with every shipment. To request the CoA PDF for a specific lot before purchasing, write to '}
-        <a href="mailto:lab@illium.health">lab@illium.health</a>
+          ? 'El Certificado de Análisis específico de tu lote se incluye con cada envío. Si un compuesto aún no muestra su CoA aquí, o necesitas el de un lote concreto antes de comprar, '
+          : 'The Certificate of Analysis specific to your lot is included with every shipment. If a compound does not show its CoA here yet, or you need the one for a specific lot before purchasing, '}
+        <Link to="/contact">{es ? 'escríbenos' : 'contact us'}</Link>
         {es
           ? ' indicando el compuesto y el número de lote. También puedes verificar la autenticidad de tu producto escaneando el código QR de la etiqueta.'
           : ', indicating the compound and lot number. You can also verify your product’s authenticity by scanning the QR code on the label.'}
       </p>
+      {viewer && (
+        <CoaFullscreen url={viewer.url} productName={viewer.name} locale={locale} onClose={() => setViewer(null)} />
+      )}
     </PageShell>
   );
 }

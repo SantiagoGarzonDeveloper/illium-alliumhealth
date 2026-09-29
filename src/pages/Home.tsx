@@ -10,7 +10,9 @@ import { useI18n } from '@/i18n/I18nContext';
 import type { Locale } from '@/i18n/translations';
 import { getLocalizedProduct } from '@/lib/productLocale';
 import { getEffectivePrice } from '@/lib/pricing';
-import { isDeadStorageUrl } from '@/lib/uploadMedia';
+import { CategoryChips } from '@/components/shop/CategoryChips';
+import { filterByShopFilter, productCategoryLabel, shopFilterFromParam, shopFilterLabel, type ShopFilter } from '@/lib/catalogCategories';
+import { displayImage } from '@/lib/productImage';
 
 type HomeCategory = {
   name: string;
@@ -20,12 +22,17 @@ type HomeCategory = {
   icon?: ComponentType<{ className?: string }>;
 };
 
+// 29-sep: solo dos categorías (pedido del cliente): todos los péptidos y al por mayor.
 const DEFAULT_CATEGORIES: HomeCategory[] = [
-  { name: 'Peptides', icon: Activity, color: 'bg-emerald-100 text-emerald-700', path: '/shop?category=peptides' },
-  { name: 'NAD+', icon: Zap, color: 'bg-amber-100 text-amber-700', path: '/shop?category=nad' },
-  { name: 'Nootropics', icon: Brain, color: 'bg-blue-100 text-blue-700', path: '/shop?category=nootropics' },
-  { name: 'Recovery', icon: ShieldCheck, color: 'bg-purple-100 text-purple-700', path: '/shop?category=recovery' },
+  { name: 'Shop All Peptides', icon: Activity, color: 'bg-slate-900 text-white', path: '/shop', imageUrl: '/product-images/illium-bpc157-tb500.png' },
+  { name: 'Wholesale', icon: ShieldCheck, color: 'bg-slate-900 text-white', path: '/shop?category=wholesale', imageUrl: '/product-images/illium-glow.png' },
 ];
+
+/** Una categoría guardada en Ajustes solo vale si es «todos» o «al por mayor». */
+function isAllowedCategoryPath(path: string): boolean {
+  const slug = categorySlugFromPath(path)?.toLowerCase() || '';
+  return slug === '' || slug === 'peptides' || slug === 'all' || slug === 'wholesale';
+}
 
 const ICON_CYCLE = [Activity, Zap, Brain, ShieldCheck] as const;
 
@@ -41,6 +48,8 @@ function categorySlugFromPath(path: string): string | null {
 }
 
 function localizedCategoryName(path: string, rawName: string, _locale: Locale, t: (p: string) => string): string {
+  // 29-sep: solo «Shop All Peptides» y «Wholesale».
+  if (isAllowedCategoryPath(path)) return shopFilterLabel(shopFilterFromParam(categorySlugFromPath(path)), _locale);
   // Se traduce en ambos idiomas: los nombres de categoría viven en shop.cat.* (sin lenguaje de uso humano).
   const slug = categorySlugFromPath(path)?.toLowerCase();
   if (slug) {
@@ -66,41 +75,21 @@ function localizedCategoryName(path: string, rawName: string, _locale: Locale, t
   return rawName;
 }
 
-function localizedProductCategory(slug: string, _locale: Locale, t: (p: string) => string): string {
-  const key = `shop.cat.${slug.toLowerCase()}`;
-  const tr = t(key);
-  return tr === key ? slug : tr;
-}
 
 /** Imagen de respaldo cuando un producto no tiene foto o la foto está rota. */
 const FALLBACK_IMG = '/product-images/illium-bpc-157.png';
 
-/**
- * Las URLs viejas de Firebase Storage ya no cargan (la cuenta de facturación
- * del proyecto se cerró y el bucket devuelve HTTP 402). Cuando aparezca una,
- * se usa la imagen de respaldo en vez de mostrar el ícono de imagen rota.
- */
-function productImage(img?: string): string {
-  if (!img || !img.trim()) return FALLBACK_IMG;
-  if (isDeadStorageUrl(img)) return FALLBACK_IMG;
-  return img;
-}
 
 export function Home() {
   const { t, locale } = useI18n();
   const products = useAppStore((state) => state.products);
   const bestsellers = products.slice(0, 4);
-  const [catalogFilter, setCatalogFilter] = useState<string>('all');
+  const [catalogFilter, setCatalogFilter] = useState<ShopFilter>('all');
 
-  /** Categorías presentes en el catálogo real (para los filtros de la portada). */
-  const catalogCategories = useMemo(() => {
-    const slugs = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
-    return ['all', ...slugs];
-  }, [products]);
-
-  const catalogProducts = useMemo(
-    () => (catalogFilter === 'all' ? products : products.filter((p) => p.category === catalogFilter)),
-    [products, catalogFilter]
+  const catalogProducts = useMemo(() => filterByShopFilter(products, catalogFilter), [products, catalogFilter]);
+  const catalogCounts = useMemo(
+    () => ({ all: filterByShopFilter(products, 'all').length, wholesale: filterByShopFilter(products, 'wholesale').length }),
+    [products]
   );
   const [, setHeroTitle] = useState(() => t('home.defaultHeroTitle'));
   const [, setHeroSubtitle] = useState(() => t('home.defaultHeroSubtitle'));
@@ -141,7 +130,9 @@ export function Home() {
         setFreeShipMin(data.freeShippingThreshold);
       }
       if (data.categories && Array.isArray(data.categories) && data.categories.length > 0) {
-        const mapped: HomeCategory[] = data.categories.map((c: Record<string, unknown>, i: number) => {
+        const mapped: HomeCategory[] = (data.categories as Record<string, unknown>[])
+          .filter((c) => isAllowedCategoryPath(String(c.path ?? '/shop')))
+          .map((c, i: number) => {
           const path = String(c.path ?? '/shop');
           const rawName = String(c.name ?? '');
           return {
@@ -152,7 +143,12 @@ export function Home() {
             icon: ICON_CYCLE[i % ICON_CYCLE.length],
           };
         });
-        setCategories(mapped);
+        // Si en Ajustes quedan categorías viejas, se muestran las dos por defecto.
+        setCategories(
+          mapped.length === 2
+            ? mapped
+            : DEFAULT_CATEGORIES.map((c) => ({ ...c, name: localizedCategoryName(c.path, c.name, locale, t) }))
+        );
       }
     });
     return () => unsub();
@@ -347,7 +343,8 @@ export function Home() {
             </h2>
             <div className="section-divider mt-4" />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
+          {/* Dos categorías, de a 2 por fila (pedido del cliente) */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 max-w-4xl mx-auto">
             {categories.map((cat, idx) => {
               const Icon = cat.icon ?? Activity;
               return (
@@ -361,8 +358,9 @@ export function Home() {
                       nad: { grad: 'from-yellow-800/40 via-slate-800 to-black', glow: 'hover:shadow-amber-500/30' },
                       blends: { grad: 'from-brand-900/70 via-emerald-900/40 to-black', glow: 'hover:shadow-brand-600/30' },
                       peptides: { grad: 'from-brand-900/60 via-slate-900 to-black', glow: 'hover:shadow-brand-600/30' },
+                      wholesale: { grad: 'from-brand-950 via-emerald-900/40 to-black', glow: 'hover:shadow-brand-600/30' },
                     };
-                    const tone = tones[slug] || tones.blends;
+                    const tone = tones[slug] || tones.peptides;
                     return (
                       <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${tone.grad} aspect-[3/4] cursor-pointer transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl ${tone.glow}`}>
                     {cat.imageUrl ? (
@@ -382,9 +380,9 @@ export function Home() {
                     )}
 
                     {/* Content overlay */}
-                    <div className="relative z-10 h-full flex flex-col justify-end p-6">
+                    <div className="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
                       <p className="text-[10px] uppercase tracking-[0.2em] text-brand-400 font-bold mb-2">ILLIUM</p>
-                      <h3 className="text-xl font-bold text-white mb-1 tracking-tight">{cat.name}</h3>
+                      <h3 className="text-base sm:text-xl font-bold text-white mb-1 tracking-tight">{cat.name}</h3>
                       <p className="text-xs text-slate-300 mb-3 leading-tight">
                         {(() => {
                           const slug = categorySlugFromPath(cat.path)?.toLowerCase() || '';
@@ -396,6 +394,8 @@ export function Home() {
                             nad: { es: 'NAD+ 500 mg y 1000 mg', en: 'NAD+ 500 mg & 1000 mg' },
                             blends: { es: 'Mezclas de compuestos', en: 'Compound blends' },
                             peptides: { es: 'Péptidos de investigación', en: 'Research peptides' },
+                            '': { es: 'Todo el catálogo de investigación', en: 'The full research catalog' },
+                            wholesale: { es: 'Compra por volumen y ahorra', en: 'Buy in bulk and save' },
                           };
                           const s = subs[slug];
                           return s ? (locale === 'es' ? s.es : s.en) : '';
@@ -428,37 +428,27 @@ export function Home() {
             </h2>
             <p className="text-slate-500">
               {locale === 'es'
-                ? `${products.length} compuestos de grado laboratorio · pureza 99%+ · COA por lote`
-                : `${products.length} lab-grade compounds · 99%+ purity · COA per batch`}
+                ? `${catalogCounts.all} compuestos de grado laboratorio · pureza 99%+ · COA por lote`
+                : `${catalogCounts.all} lab-grade compounds · 99%+ purity · COA per batch`}
             </p>
             <div className="section-divider mt-4" />
           </div>
 
-          {/* Filtros por categoría */}
-          {catalogCategories.length > 1 && (
-            <div className="flex flex-wrap justify-center gap-2 mb-10">
-              {catalogCategories.map((slug) => (
-                <button
-                  key={slug}
-                  type="button"
-                  onClick={() => setCatalogFilter(slug)}
-                  className={`rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${
-                    catalogFilter === slug
-                      ? 'bg-brand-600 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {slug === 'all'
-                    ? (locale === 'es' ? 'Todos' : 'All')
-                    : localizedProductCategory(slug, locale, t)}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Solo dos filtros: Shop All Peptides y Wholesale (pedido del cliente, 29-sep) */}
+          <CategoryChips value={catalogFilter} onChange={setCatalogFilter} locale={locale} counts={catalogCounts} className="mb-10" />
 
           {catalogProducts.length === 0 ? (
-            <p className="text-center text-slate-400 py-10">
-              {locale === 'es' ? 'Cargando catálogo…' : 'Loading catalog…'}
+            <p className="text-center text-slate-500 py-10">
+              {products.length === 0
+                ? (locale === 'es' ? 'Cargando catálogo…' : 'Loading catalog…')
+                : (
+                  <>
+                    {locale === 'es' ? 'Muy pronto: productos al por mayor. ' : 'Wholesale products coming soon. '}
+                    <Link to="/contact" className="font-semibold text-brand-700 underline">
+                      {locale === 'es' ? 'Pide tu cotización' : 'Request a quote'}
+                    </Link>
+                  </>
+                )}
             </p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
@@ -471,7 +461,7 @@ export function Home() {
                     <div className="relative h-full overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-brand-300">
                       <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-slate-900 to-black">
                         <img
-                          src={productImage(product.img)}
+                          src={displayImage(product, products)}
                           alt={lp.name}
                           loading="lazy"
                           onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG; }}
@@ -490,7 +480,7 @@ export function Home() {
                       </div>
                       <div className="p-4">
                         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-700 mb-1.5">
-                          {localizedProductCategory(product.category, locale, t)}
+                          {productCategoryLabel(product, locale)}
                         </p>
                         <h3 className="font-bold text-slate-900 text-sm leading-snug mb-2 line-clamp-2 min-h-[2.5rem]">
                           {lp.name}
@@ -711,7 +701,7 @@ export function Home() {
                 icon: '🔬',
               },
             ].map((b) => (
-              <Link key={b.key} to={`/shop?category=${b.ctaCat}`} className="group block">
+              <Link key={b.key} to="/shop" data-cta={b.ctaCat} className="group block">
                 {/* Extra wrapper adds top padding so the absolute badge has space (no more clipping) */}
                 <div className={`relative ${b.badge ? 'pt-5' : ''}`}>
                   {b.badge && (
@@ -923,7 +913,7 @@ export function Home() {
                   {/* Image section */}
                   <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-gradient-to-b from-slate-800/50 to-black">
                     <img
-                      src={productImage(product.img)}
+                      src={displayImage(product, products)}
                       alt={lp.name}
                       onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG; }}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
@@ -933,7 +923,7 @@ export function Home() {
                   {/* Info section */}
                   <div className="px-3 pt-5 pb-3">
                     <div className="text-[10px] text-brand-400 mb-2 font-bold tracking-[0.2em] uppercase">
-                      ILLIUM · {localizedProductCategory(product.category, locale, t)}
+                      ILLIUM · {productCategoryLabel(product, locale)}
                     </div>
                     <h3 className="font-bold text-white mb-2 line-clamp-1 text-lg tracking-tight">{lp.name}</h3>
                     <div className="flex items-center gap-1.5 mb-3 text-xs text-slate-400">

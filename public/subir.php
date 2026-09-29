@@ -4,7 +4,7 @@
  * Guarda imágenes/PDF en /medios/ y devuelve la URL pública.
  * Se sube por FTP a /alliumhealth.net/public_html/subir.php
  */
-$ORIGENES = ['https://alliumhealth.net', 'https://www.alliumhealth.net', 'http://localhost:5173'];
+$ORIGENES = ['https://alliumhealth.net', 'https://www.alliumhealth.net', 'https://illiumlab.com', 'https://www.illiumlab.com', 'http://localhost:5173'];
 $origen = $_SERVER['HTTP_ORIGIN'] ?? '';
 header('Access-Control-Allow-Origin: ' . (in_array($origen, $ORIGENES, true) ? $origen : 'https://alliumhealth.net'));
 header('Access-Control-Allow-Headers: Content-Type, X-Illium-Token');

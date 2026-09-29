@@ -359,7 +359,14 @@ export function WorkerPanel() {
     );
   }
 
-  const linkBase = publicSiteUrl || window.location.origin;
+  // 29-sep: si el panel se abre desde uno de los dominios de producción, el enlace
+  // usa ESE dominio (así nunca apunta a un dominio cuyo DNS aún no está listo,
+  // p. ej. illiumlab.com mientras sigue aparcado en GoDaddy). Desde otros orígenes
+  // (localhost, firebaseapp) se usa el «URL público» de Ajustes.
+  const PROD_HOSTS = ['alliumhealth.net', 'www.alliumhealth.net', 'illiumlab.com', 'www.illiumlab.com'];
+  const linkBase = PROD_HOSTS.includes(window.location.hostname)
+    ? window.location.origin
+    : publicSiteUrl || window.location.origin;
   const referralLink = `${linkBase}/?ref=${user.uid}`;
   const treeRoots = buildReferralTree(user.uid, networkFlat);
 

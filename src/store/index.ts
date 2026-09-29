@@ -28,6 +28,8 @@ export interface Product {
   dosageNote?: string;
   /** How many months of supply a single vial covers at the typical dose. Defaults to 1. */
   monthsSupplyPerVial?: number;
+  /** Certificate of Analysis (imagen o PDF) subido desde Admin → Productos (vía subir.php). */
+  coaUrl?: string;
 }
 
 export interface CartItem {

@@ -19,6 +19,7 @@ import { markSharedCartUsed } from '@/lib/sharedCart';
 import { avisarPedidoCreado } from '@/lib/api';
 import { aplicarStockDelPedido } from '@/lib/stockPedido';
 import { StripeCardForm } from '@/components/cart/StripeCardForm';
+import { displayImage } from '@/lib/productImage';
 
 export function Cart() {
   const { t, locale } = useI18n();
@@ -674,7 +675,7 @@ export function Cart() {
                 return (
                   <li key={item.product.id} className="flex items-center gap-3">
                     <div className="h-14 w-14 rounded-lg overflow-hidden bg-black shrink-0">
-                      <img src={item.product.img} alt="" className="w-full h-full object-cover" />
+                      <img src={displayImage(item.product, products)} alt="" className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-white truncate">{lp.name}</p>
@@ -1168,7 +1169,7 @@ export function Cart() {
               <div key={item.product.id} className="group relative flex gap-4 sm:gap-5 p-4 sm:p-5 bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-800 rounded-2xl items-center transition-all hover:border-brand-700/50 hover:shadow-2xl hover:shadow-brand-600/10">
                 {/* Image */}
                 <div className="w-20 h-24 sm:w-24 sm:h-28 shrink-0 rounded-xl overflow-hidden bg-black">
-                  <img src={item.product.img} alt={lp.name} className="w-full h-full object-cover" />
+                  <img src={displayImage(item.product, products)} alt={lp.name} className="w-full h-full object-cover" />
                 </div>
                 {/* Info */}
                 <div className="flex-1 min-w-0">

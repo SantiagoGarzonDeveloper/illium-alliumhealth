@@ -17,6 +17,8 @@ export function parseVariant(name: string): VariantParts {
   if (!m) return { baseName: name.trim(), variantLabel: null };
   const variantLabel = `${m[1]}${m[2].toLowerCase()}`;
   const baseName = (name.slice(0, m.index) + name.slice((m.index || 0) + m[0].length))
+    // «BPC-157 + TB-500 (10mg) (10 vials)» → sin la dosis quedaba «()»: se quita.
+    .replace(/\(\s*\)/g, '')
     .replace(/\s+/g, ' ')
     .replace(/[\s\-·,]+$/g, '')
     .trim();

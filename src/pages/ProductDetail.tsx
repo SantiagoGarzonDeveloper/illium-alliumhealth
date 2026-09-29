@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAppStore, useToastStore } from '@/store';
 import { Minus, Plus, ShieldCheck, ShoppingCart, Sparkles, Check, Truck, Lock, Award, ArrowLeft } from 'lucide-react';
@@ -7,6 +7,9 @@ import { useI18n } from '@/i18n/I18nContext';
 import { getLocalizedProduct } from '@/lib/productLocale';
 import { getEffectivePrice } from '@/lib/pricing';
 import { findSiblingVariants, parseVariant } from '@/lib/productVariants';
+import { isWholesale, productCategoryLabel } from '@/lib/catalogCategories';
+import { CoaFullscreen, CoaPreview, CoaUnavailable } from '@/components/coa/CoaViewer';
+import { displayImage } from '@/lib/productImage';
 
 export function ProductDetail() {
   const { t, locale } = useI18n();
@@ -23,9 +26,7 @@ export function ProductDetail() {
   if (!product) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">{t('product.notFound')}</div>;
 
   const lp = getLocalizedProduct(product, locale);
-  const catKey = `shop.cat.${product.category.toLowerCase()}`;
-  const catTr = t(catKey);
-  const categoryDisplay = catTr !== catKey ? catTr : product.category;
+  const categoryDisplay = productCategoryLabel(product, locale);
 
   const stock = Number(product.stock) || 0;
   const inCartQty = cart.find((i) => i.product.id === product.id)?.quantity || 0;
@@ -63,7 +64,7 @@ export function ProductDetail() {
   const total = (eff.finalPrice * quantity).toFixed(2);
 
   const relatedProducts = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
+    .filter((p) => isWholesale(p) === isWholesale(product) && p.id !== product.id && (Number(p.stock) || 0) > 0)
     .slice(0, 4);
 
   return (
@@ -99,7 +100,7 @@ export function ProductDetail() {
             <div className="sticky top-24 rounded-3xl overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-black border border-slate-800 shadow-2xl shadow-brand-900/20">
               <div className="relative aspect-square overflow-hidden">
                 <img
-                  src={product.img}
+                  src={displayImage(product, products)}
                   alt={lp.name}
                   className="w-full h-full object-cover"
                 />
@@ -249,12 +250,15 @@ export function ProductDetail() {
             </div>
 
             {/* Security line */}
-            <p className="text-xs text-slate-500 text-center mb-6 flex items-center justify-center gap-1.5">
+            <p className="text-xs text-slate-500 text-center mb-5 flex items-center justify-center gap-1.5">
               <Lock className="h-3 w-3" /> {locale === 'es' ? 'Pago seguro · Soporte 24/7' : 'Secure checkout · 24/7 support'}
             </p>
 
-            {/* COA expandable section */}
-            <CoaSection locale={locale} productName={lp.name} />
+            {/* RESEARCH USE NOTICE — debajo de «Add to cart» (pedido del cliente, 29-sep) */}
+            <ResearchUseNotice locale={locale} />
+
+            {/* COA expandable section — muestra el COA real del producto */}
+            <CoaSection key={product.id} locale={locale} productName={lp.name} coaUrl={product.coaUrl} />
 
             {/* Catálogo completo */}
             <div className="rounded-2xl bg-gradient-to-br from-brand-900/40 to-slate-900/50 border border-brand-700/30 p-6 mt-8">
@@ -290,7 +294,7 @@ export function ProductDetail() {
                   <Link key={p.id} to={`/product/${p.id}`} className="group block">
                     <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-black border border-slate-800 hover:border-brand-700/50 transition-all duration-300 hover:-translate-y-1">
                       <div className="relative aspect-[4/5] overflow-hidden bg-black">
-                        <img src={p.img} alt={rp.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img src={displayImage(p, products)} alt={rp.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         {rEff.hasDiscount && (
                           <div className="absolute top-2 left-2 inline-flex items-center rounded-full bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5">
                             -{rEff.percentOff}%
@@ -319,15 +323,70 @@ export function ProductDetail() {
   );
 }
 
-// ─── COA expandable section ───
-function CoaSection({ locale, productName }: { locale: string; productName: string }) {
-  const [open, setOpen] = useState(false);
+// ─── RESEARCH USE NOTICE ───
+function ResearchUseNotice({ locale }: { locale: string }) {
   const es = locale === 'es';
   return (
-    <div className="mt-4">
+    <div
+      data-research-notice
+      className="mb-4 flex gap-4 rounded-2xl border border-brand-700/50 border-l-4 border-l-brand-500 bg-gradient-to-br from-brand-950/80 to-slate-900/70 p-5"
+    >
+      <div className="h-10 w-10 shrink-0 rounded-xl bg-brand-500/15 ring-1 ring-brand-500/30 flex items-center justify-center">
+        <span className="text-lg font-black text-brand-400 leading-none">i</span>
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-brand-400 mb-1.5">
+          {es ? 'Aviso de uso en investigación' : 'Research Use Notice'}
+        </p>
+        <p className="text-sm font-semibold text-white leading-snug">
+          {es
+            ? 'Todos los viales de péptidos vienen en polvo y no están reconstituidos.'
+            : 'All peptide vials are in powder form and are not reconstituted.'}
+        </p>
+        <p className="text-sm text-slate-300 leading-relaxed mt-1">
+          {es
+            ? 'Ningún producto ni material vendido en este sitio es para consumo humano, y todos están sujetos a nuestros '
+            : 'All products and materials sold on this site are not for human consumption and subject to our '}
+          <Link to="/terms" className="font-semibold text-brand-300 underline underline-offset-2 hover:text-brand-200">
+            {es ? 'Términos y Condiciones' : 'Terms and Conditions'}
+          </Link>
+          .
+        </p>
+        <Link
+          to="/lab-results"
+          className="inline-block mt-2.5 text-sm font-bold text-brand-300 underline underline-offset-2 hover:text-brand-200"
+        >
+          {es ? 'Ver nuestra biblioteca de COA' : 'View Our COA Library'}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ─── COA expandable section ───
+function CoaSection({ locale, productName, coaUrl }: { locale: string; productName: string; coaUrl?: string }) {
+  const location = useLocation();
+  const wantsCoa = location.hash === '#coa';
+  const [open, setOpen] = useState(wantsCoa);
+  const [full, setFull] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const es = locale === 'es';
+
+  // Desde «Ver compuesto →» / «Ver COA» de /lab-results se llega con #coa:
+  // se abre el acordeón y se baja hasta él (después del ScrollToTop).
+  useEffect(() => {
+    if (!wantsCoa) return;
+    const id = window.setTimeout(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 350);
+    return () => window.clearTimeout(id);
+  }, [wantsCoa]);
+
+  return (
+    <div className="mt-4 scroll-mt-24" id="coa" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        data-coa-toggle
         className="w-full flex items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-900/60 hover:bg-slate-800 text-slate-300 hover:text-white px-4 py-3 text-sm font-semibold transition-colors"
       >
         <span className="flex items-center gap-2">
@@ -338,6 +397,12 @@ function CoaSection({ locale, productName }: { locale: string; productName: stri
       </button>
       {open && (
         <div className="mt-3 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 p-5 animate-slide-down space-y-4">
+          {coaUrl ? (
+            <CoaPreview url={coaUrl} productName={productName} locale={locale} onExpand={() => setFull(true)} />
+          ) : (
+            <CoaUnavailable productName={productName} locale={locale} />
+          )}
+
           <div className="flex items-start gap-3">
             <div className="h-12 w-12 rounded-xl bg-brand-500/15 flex items-center justify-center shrink-0">
               <ShieldCheck className="h-6 w-6 text-brand-400" />
@@ -368,25 +433,10 @@ function CoaSection({ locale, productName }: { locale: string; productName: stri
               <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold">{es ? 'Método 2' : 'Method 2'}</p>
             </div>
           </div>
-
-          <div className="rounded-xl bg-brand-500/10 border border-brand-500/30 p-4">
-            <p className="text-xs text-brand-200 leading-relaxed">
-              <span className="font-bold text-brand-300">
-                {es ? '📋 Solicita tu COA: ' : '📋 Request your COA: '}
-              </span>
-              {es
-                ? 'El Certificado de Análisis completo de este lote está disponible bajo solicitud. Contáctanos por WhatsApp o correo y te lo enviamos en formato PDF.'
-                : 'The full Certificate of Analysis for this batch is available on request. Contact us via WhatsApp or email and we will send it to you in PDF format.'}
-            </p>
-          </div>
-
-          <a
-            href="/contact"
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white py-2.5 text-xs font-bold transition-colors"
-          >
-            {es ? 'Solicitar COA' : 'Request COA'}
-          </a>
         </div>
+      )}
+      {full && coaUrl && (
+        <CoaFullscreen url={coaUrl} productName={productName} locale={locale} onClose={() => setFull(false)} />
       )}
     </div>
   );

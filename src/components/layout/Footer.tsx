@@ -23,22 +23,17 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li>
                 <Link to="/shop" className="hover:text-white transition-colors duration-200">
-                  {t('footer.allProducts')}
+                  {locale === 'es' ? 'Todos los péptidos' : 'Shop All Peptides'}
                 </Link>
               </li>
               <li>
-                <Link to="/shop?category=peptides" className="hover:text-white transition-colors duration-200">
-                  {t('footer.peptides')}
+                <Link to="/shop?category=wholesale" className="hover:text-white transition-colors duration-200">
+                  {locale === 'es' ? 'Al por mayor' : 'Wholesale'}
                 </Link>
               </li>
               <li>
-                <Link to="/shop?category=nad" className="hover:text-white transition-colors duration-200">
-                  {t('footer.nadTherapy')}
-                </Link>
-              </li>
-              <li>
-                <Link to="/shop?category=blends" className="hover:text-white transition-colors duration-200">
-                  {t('footer.customBlends')}
+                <Link to="/lab-results" className="hover:text-white transition-colors duration-200">
+                  {locale === 'es' ? 'Biblioteca de COA' : 'COA Library'}
                 </Link>
               </li>
             </ul>
