@@ -7,7 +7,7 @@
 
 ---
 
-## ⭐ EMPIEZA AQUÍ — estado al 25-sep-2026 (léelo entero antes de tocar nada)
+## ⭐ EMPIEZA AQUÍ — estado al 29-sep-2026 (léelo entero antes de tocar nada)
 
 **Quién pide los cambios:** Santiago (dueño de la cuenta de desarrollo) reenvía lo que
 pide el cliente de ILLIUM, casi siempre como **audios de WhatsApp (.ogg) y capturas en el
@@ -20,7 +20,8 @@ final una **tabla "pedido → hecho → dónde revisarlo"**.
 ### Situación de un vistazo
 | Pieza | Estado |
 |---|---|
-| Web pública (SiteGround, FTP) | ✅ funciona. Último build publicado: `index-81l8FoLb.js` (24-sep) |
+| Web pública (SiteGround, FTP) | ✅ funciona. Último build publicado: `index-CpcrMqmg.js` (29-sep) |
+| Dominio nuevo illiumlab.com | ⏸ comprado en GoDaddy, aún APARCADO (76.223.105.230). Pasos en `~/Desktop/Illium_cambios_20260929/PASOS_DOMINIO.md` (los hace Santiago: requiere contraseñas) |
 | Firestore (productos, pedidos, ajustes) | ✅ funciona (plan Spark) |
 | Firebase Storage | ❌ muerto (402, facturación cerrada) → los medios viven en el dominio (§0.1) |
 | Cloud Functions | ❌ 503 y no se pueden redesplegar → reemplazadas por PHP (§0.3) |
@@ -67,15 +68,36 @@ vitality, dose/dosis, calculator, quiz, consult, inject, weight/peso, fat/grasa.
 - La calculadora de péptidos es **privada** (`CalculatorGate`: admin/subadmin/worker).
 - Imágenes: solo frascos ILLIUM; nada de personas, vendas, cerebros, «sterile injection».
 
+### 29-sep — lo que cambió (commit `4f7415b`, tag de vuelta atrás `estable-pre-20260929`)
+- **Solo 2 categorías**: `peptides` («Shop All Peptides» / «Todos los péptidos») y
+  `wholesale` («Wholesale / Al por mayor»). Lógica en `src/lib/catalogCategories.ts`
+  (cualquier slug viejo = «todos»), chips en `src/components/shop/CategoryChips.tsx`
+  (portada `#catalogo` y `/shop`), portada con 2 tarjetas de a 2 por fila, Admin →
+  Productos con solo esas 2 opciones. Datos migrados con
+  `scripts/_categorias-dos-2026-09-29.mjs` (idempotente, `--aplicar`, `--restaurar`;
+  respaldos en `../respaldos-illium/`): 22 productos → `peptides`, los 19 paquetes
+  «(10 vials)» que el cliente creó la noche del 28-sep → `wholesale`.
+- **COA por producto**: campo `products.coaUrl` (imagen o PDF) que se sube en Admin →
+  Productos (subir.php, carpeta `coa`). Se ve en el acordeón COA de la ficha, en
+  `/lab-results` («Ver COA» a pantalla completa, «Ver compuesto →» abre la ficha con
+  `#coa`). Sin archivo: «COA disponible bajo solicitud» + botón a /contact.
+  Componentes en `src/components/coa/CoaViewer.tsx`. **Hoy NINGÚN producto tiene COA
+  subido** (los viejos de lotes estaban en Storage, muerto): el cliente debe subirlos.
+- **Chat eliminado** (ChatbotWidget ya no se monta; el archivo sigue en el repo).
+- **RESEARCH USE NOTICE** verde bajo «Add to cart» en cada ficha (EN/ES).
+- Paquetes sin foto muestran la foto del frasco individual (`src/lib/productImage.ts`,
+  solo visual). `parseVariant` ya no deja «()» en el nombre.
+- Enlace de referido del socio: usa el dominio desde el que se abre el panel (antes usaba
+  `publicSiteUrl` = illiumlab.com, aparcado → enlaces rotos).
+
 ### Pendientes que DECIDE el dueño (no hacer sin su respuesta)
-1. **Dominio**: el cliente dice que la marca es ILLIUM y que la gente no encuentra la web
-   porque el dominio dice «allium». Dijo «ya lo hice nuevo» → falta que diga **qué
-   dominio compró** (illium.com es de un tercero). Luego: apuntarlo a SiteGround,
-   redirigir alliumhealth.net → nuevo, y cambiar `alliumhealth.net` en `index.html`,
-   `public/api.php`, `public/subir.php` (lista `$ORIGENES`), `src/lib/sharedCart.ts`,
-   `AdminAuthenticity.tsx` (URL de los QR: ¡los QR ya impresos apuntan al dominio
-   viejo, mantener la redirección!), `generateCoaPdf.ts`, `InvoiceModal.tsx`,
-   Firestore `settings/general.publicSiteUrl` y URLs de medios en productos.
+1. **Dominio illiumlab.com** (captura 11 del 28-sep; GoDaddy). Santiago hace SiteGround +
+   GoDaddy + SSL + Firebase Authorized domains (pasos exactos en
+   `~/Desktop/Illium_cambios_20260929/PASOS_DOMINIO.md`). El día que cargue con SSL y el
+   cliente confirme: 301 alliumhealth.net → illiumlab.com y cambiar `index.html`
+   (canonical/og/JSON-LD), crear sitemap/robots, `AdminAuthenticity.tsx` (QR nuevos; ¡los
+   impresos apuntan al viejo, mantener la redirección y el dominio!), `generateCoaPdf.ts`,
+   `InvoiceModal.tsx`, `config.php` `correo_remitente`. **No cambiar el canonical antes.**
 2. **Qué trae cada combo** (Stack GLP $299, análogos $319, BPC·TB·GHK $209): se listaron
    los compuestos de cada categoría; confirmar composición real.
 3. **Fotos con marca registrada**: `illium-retatrutide.png` y `illium-tirzepatide.png`
@@ -85,6 +107,12 @@ vitality, dose/dosis, calculator, quiz, consult, inject, weight/peso, fat/grasa.
 6. `/consulta` sigue enrutada (sin enlace) con una sugerencia de «protocolos».
 7. Los 7 productos con tarjeta de marca generada esperan su foto real (se sube desde
    Admin → Productos; va por `subir.php`).
+8. **COA de cada producto**: el cliente debe subirlos (Admin → Productos → «Subir COA»).
+   Los 19 paquetes al por mayor tampoco tienen foto ni descripción propias.
+9. Captura 08 del 28-sep («Datos para la IA del Quiz» en Admin): no se tocó; revisar con
+   el cliente qué quería (el quiz público ya no existe).
+10. Los correos `legal@illium.health` (Términos) y el antiguo `lab@illium.health` usan un
+    dominio que no consta que sea del cliente; en /lab-results ya se cambió por /contact.
 
 ---
 
