@@ -20,7 +20,7 @@ final una **tabla "pedido → hecho → dónde revisarlo"**.
 ### Situación de un vistazo
 | Pieza | Estado |
 |---|---|
-| Web pública (SiteGround, FTP) | ✅ funciona. Último build publicado: `index-CpcrMqmg.js` (29-sep) |
+| Web pública (SiteGround, FTP) | ✅ funciona. Último build publicado: `index-Dj3xT6WV.js` (6-oct) |
 | Dominio nuevo illiumlab.com | ⏸ comprado en GoDaddy, aún APARCADO (76.223.105.230). Pasos en `~/Desktop/Illium_cambios_20260929/PASOS_DOMINIO.md` (los hace Santiago: requiere contraseñas) |
 | Firestore (productos, pedidos, ajustes) | ✅ funciona (plan Spark) |
 | Firebase Storage | ❌ muerto (402, facturación cerrada) → los medios viven en el dominio (§0.1) |
@@ -67,6 +67,30 @@ vitality, dose/dosis, calculator, quiz, consult, inject, weight/peso, fat/grasa.
 - Envío: **«EE.UU. y a cualquier país»**. Se vende **al por mayor** (→ `/contact`).
 - La calculadora de péptidos es **privada** (`CalculatorGate`: admin/subadmin/worker).
 - Imágenes: solo frascos ILLIUM; nada de personas, vendas, cerebros, «sterile injection».
+
+### 6-oct — lo que cambió (build `index-Dj3xT6WV.js`)
+- **Tarjetas del mismo tamaño** en `/shop`, `#catalogo` y best-sellers: columna flex `h-full`,
+  fila de presentaciones de alto fijo (`h-6`, sin saltos de línea) y precio con `mt-auto`.
+- **Compra mínima** por producto: campo `products.minQty` (Admin → Productos → «Compra
+  mínima»). Si no está guardado, los `wholesale` valen **2** por defecto
+  (`normalizeProductFromFirestore`); un valor guardado (incluido 1) manda. La ficha arranca
+  en el mínimo y no deja bajar; el carrito sube solo los carritos viejos y bloquea el pago
+  si no se cumple. (No se escribió en Firestore: el clasificador bloqueó el script.)
+- **Combo por cantidad** («BUILD YOUR ULTIMATE RESEARCH BUNDLE», sección `#bundle` en la
+  portada, reemplaza «Stacks completos»): 3.º −25 %, 4.º −50 % (MOST POPULAR), 7.º gratis
+  (BEST VALUE). Lógica en `src/lib/bundleOffer.ts`: solo péptidos individuales (no
+  wholesale), descuento sobre la unidad más barata, un solo nivel; **con cupón se aplica
+  el que más ahorra** (no se combinan; el cupón no se gasta si gana el combo). La orden
+  guarda `bundleDiscount` y `bundleOffer` ("4:50"). ⚠️ Stripe (apagado) re-precia en el
+  servidor sin combo: si algún día se activa, añadir el combo en `createStripePaymentIntent`.
+- **COA**: la ficha muestra el COA subido del producto **o el de su gemelo** (caja ↔
+  frasco, `resolveProductCoa`) y además el **certificado del último lote** de Admin →
+  Autenticidad (`useBatchCoa`, mismos datos que `/coa/:lote`). «Bajo solicitud» solo si no
+  hay nada. `/coa/:lote` muestra la imagen del COA (o la del producto) y la fecha ya no sale
+  un día antes (`timeZone: 'UTC'`, también en VerifyAuthenticity y generateCoaPdf).
+- **Fotos de categorías**: si en Ajustes la imagen es vieja (`/product-images/`) o vacía, la
+  portada usa la foto ACTUAL de BPC-157 + TB-500 10mg (todos) y GLOW (mayoristas).
+- `ScrollToTop` respeta anclas (`/#bundle`).
 
 ### 29-sep — lo que cambió (commit `4f7415b`, tag de vuelta atrás `estable-pre-20260929`)
 - **Solo 2 categorías**: `peptides` («Shop All Peptides» / «Todos los péptidos») y

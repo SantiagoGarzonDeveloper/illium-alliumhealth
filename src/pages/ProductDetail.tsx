@@ -8,20 +8,29 @@ import { getLocalizedProduct } from '@/lib/productLocale';
 import { getEffectivePrice } from '@/lib/pricing';
 import { findSiblingVariants, parseVariant } from '@/lib/productVariants';
 import { isWholesale, productCategoryLabel } from '@/lib/catalogCategories';
-import { CoaFullscreen, CoaPreview, CoaUnavailable } from '@/components/coa/CoaViewer';
+import { CoaBatchSummary, CoaFullscreen, CoaPreview, CoaUnavailable } from '@/components/coa/CoaViewer';
 import { displayImage } from '@/lib/productImage';
+import { resolveProductCoa, sameCompoundProducts, useBatchCoa } from '@/lib/coa';
+import { BUNDLE_TIERS, isBundleEligible, minQtyOf } from '@/lib/bundleOffer';
+import type { Product } from '@/store';
 
 export function ProductDetail() {
   const { t, locale } = useI18n();
   const { id } = useParams();
   const navigate = useNavigate();
-  const [quantity, setQuantity] = useState(1);
+  // La cantidad va ligada al producto: al cambiar de presentación arranca en su
+  // compra mínima.
+  const [qtyState, setQtyState] = useState<{ id?: string; q: number }>({ q: 1 });
   const addToCart = useAppStore((state) => state.addToCart);
   const products = useAppStore((state) => state.products);
   const cart = useAppStore((state) => state.cart);
   const showToast = useToastStore((s) => s.showToast);
 
   const product = products.find((p) => p.id === id);
+  const minQty = minQtyOf(product);
+  const quantity = qtyState.id === id ? qtyState.q : minQty;
+  const setQuantity = (next: number | ((q: number) => number)) =>
+    setQtyState({ id, q: typeof next === 'function' ? next(quantity) : next });
 
   if (!product) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">{t('product.notFound')}</div>;
 
@@ -30,12 +39,24 @@ export function ProductDetail() {
 
   const stock = Number(product.stock) || 0;
   const inCartQty = cart.find((i) => i.product.id === product.id)?.quantity || 0;
-  const isOutOfStock = stock <= 0;
+  // Si no alcanza el stock para la compra mínima, se trata como agotado.
+  const isOutOfStock = stock <= 0 || stock < minQty;
+  /** Lo mínimo que se puede añadir ahora (si ya hay en el carrito, basta con 1). */
+  const minAdd = Math.max(1, minQty - inCartQty);
 
   const handleAddToCart = () => {
     // Always validate live stock (incl. what's already in the cart) before adding.
     if (isOutOfStock) {
       showToast(locale === 'es' ? 'Producto agotado' : 'Out of stock');
+      return;
+    }
+    if (quantity < minAdd) {
+      showToast(
+        locale === 'es'
+          ? `La compra mínima de este producto es de ${minQty} unidades.`
+          : `The minimum order for this product is ${minQty} units.`,
+      );
+      setQuantity(minAdd);
       return;
     }
     if (inCartQty + quantity > stock) {
@@ -45,7 +66,7 @@ export function ProductDetail() {
           ? `Solo quedan ${stock} en stock${inCartQty ? ` (ya tienes ${inCartQty} en el carrito)` : ''}.`
           : `Only ${stock} in stock${inCartQty ? ` (you already have ${inCartQty} in the cart)` : ''}.`,
       );
-      if (left > 0) {
+      if (left > 0 && inCartQty + left >= minQty) {
         addToCart(product, left);
       }
       return;
@@ -221,8 +242,10 @@ export function ProductDetail() {
               <div className="flex items-center rounded-full bg-slate-900/60 border border-slate-700 overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                  onClick={() => setQuantity(Math.max(minAdd, quantity - 1))}
+                  disabled={quantity <= minAdd}
+                  aria-label={locale === 'es' ? 'Quitar uno' : 'Remove one'}
+                  className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
@@ -231,6 +254,7 @@ export function ProductDetail() {
                   type="button"
                   onClick={() => setQuantity((q) => (stock > 0 ? Math.min(stock, q + 1) : q))}
                   disabled={isOutOfStock || quantity >= stock}
+                  aria-label={locale === 'es' ? 'Añadir uno' : 'Add one'}
                   className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
                 >
                   <Plus className="w-4 h-4" />
@@ -249,6 +273,17 @@ export function ProductDetail() {
               </Button>
             </div>
 
+            {minQty > 1 && (
+              <p className="-mt-2 mb-4 text-xs font-semibold text-brand-300 flex items-center gap-1.5" data-min-qty={minQty}>
+                <Check className="h-3.5 w-3.5" />
+                {locale === 'es'
+                  ? `Compra mínima: ${minQty} ${isWholesale(product) ? 'paquetes' : 'unidades'}${inCartQty ? ` · ya tienes ${inCartQty} en el carrito` : ''}`
+                  : `Minimum order: ${minQty} ${isWholesale(product) ? 'packs' : 'units'}${inCartQty ? ` · ${inCartQty} already in your cart` : ''}`}
+              </p>
+            )}
+
+            {isBundleEligible(product) && <BundleStrip locale={locale} />}
+
             {/* Security line */}
             <p className="text-xs text-slate-500 text-center mb-5 flex items-center justify-center gap-1.5">
               <Lock className="h-3 w-3" /> {locale === 'es' ? 'Pago seguro · Soporte 24/7' : 'Secure checkout · 24/7 support'}
@@ -258,7 +293,7 @@ export function ProductDetail() {
             <ResearchUseNotice locale={locale} />
 
             {/* COA expandable section — muestra el COA real del producto */}
-            <CoaSection key={product.id} locale={locale} productName={lp.name} coaUrl={product.coaUrl} />
+            <CoaSection key={product.id} locale={locale} productName={lp.name} product={product} products={products} />
 
             {/* Catálogo completo */}
             <div className="rounded-2xl bg-gradient-to-br from-brand-900/40 to-slate-900/50 border border-brand-700/30 p-6 mt-8">
@@ -364,10 +399,15 @@ function ResearchUseNotice({ locale }: { locale: string }) {
 }
 
 // ─── COA expandable section ───
-function CoaSection({ locale, productName, coaUrl }: { locale: string; productName: string; coaUrl?: string }) {
+function CoaSection({ locale, productName, product, products }: { locale: string; productName: string; product: Product; products: Product[] }) {
   const location = useLocation();
   const wantsCoa = location.hash === '#coa';
-  const [open, setOpen] = useState(wantsCoa);
+  // COA subido en Admin → Productos (o el de su caja / frasco gemelo) y, si no,
+  // el certificado del último lote registrado con los QR (Admin → Autenticidad).
+  const uploadedCoa = resolveProductCoa(product, products);
+  const batch = useBatchCoa(sameCompoundProducts(product, products).map((p) => p.id));
+  const coaUrl = uploadedCoa || batch?.coaUrl || undefined;
+  const [open, setOpen] = useState(true);
   const [full, setFull] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const es = locale === 'es';
@@ -397,11 +437,9 @@ function CoaSection({ locale, productName, coaUrl }: { locale: string; productNa
       </button>
       {open && (
         <div className="mt-3 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 p-5 animate-slide-down space-y-4">
-          {coaUrl ? (
-            <CoaPreview url={coaUrl} productName={productName} locale={locale} onExpand={() => setFull(true)} />
-          ) : (
-            <CoaUnavailable productName={productName} locale={locale} />
-          )}
+          {coaUrl && <CoaPreview url={coaUrl} productName={productName} locale={locale} onExpand={() => setFull(true)} />}
+          {batch && <CoaBatchSummary batch={batch} locale={locale} />}
+          {!coaUrl && !batch && <CoaUnavailable productName={productName} locale={locale} />}
 
           <div className="flex items-start gap-3">
             <div className="h-12 w-12 rounded-xl bg-brand-500/15 flex items-center justify-center shrink-0">
@@ -439,5 +477,28 @@ function CoaSection({ locale, productName, coaUrl }: { locale: string; productNa
         <CoaFullscreen url={coaUrl} productName={productName} locale={locale} onClose={() => setFull(false)} />
       )}
     </div>
+  );
+}
+
+// ─── Oferta por cantidad (combo) — recordatorio en la ficha ───
+function BundleStrip({ locale }: { locale: string }) {
+  const es = locale === 'es';
+  return (
+    <Link
+      to="/#bundle"
+      className="mb-5 grid grid-cols-3 gap-2 rounded-2xl border border-brand-500/30 bg-brand-500/10 p-2 hover:border-brand-400/60 transition-colors"
+      data-bundle-strip
+    >
+      {[...BUNDLE_TIERS].reverse().map((t) => (
+        <div key={t.units} className="rounded-xl bg-slate-950/50 px-2 py-2 text-center">
+          <p className="text-sm font-black text-brand-300 leading-tight">
+            {t.percent >= 100 ? (es ? 'GRATIS' : 'FREE') : `${t.percent}% OFF`}
+          </p>
+          <p className="text-[10px] font-semibold text-slate-300 leading-tight mt-0.5">
+            {es ? `Compra ${t.units - 1} · el ${t.units}.º` : `Buy ${t.units - 1} · ${t.units}${t.units === 3 ? 'rd' : 'th'} peptide`}
+          </p>
+        </div>
+      ))}
+    </Link>
   );
 }

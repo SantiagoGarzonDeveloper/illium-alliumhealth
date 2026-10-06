@@ -20,6 +20,8 @@ import { avisarPedidoCreado } from '@/lib/api';
 import { aplicarStockDelPedido } from '@/lib/stockPedido';
 import { StripeCardForm } from '@/components/cart/StripeCardForm';
 import { displayImage } from '@/lib/productImage';
+import { computeBundle, bundleTierLabel, bundleNextHint, minQtyOf } from '@/lib/bundleOffer';
+import { productCategoryLabel } from '@/lib/catalogCategories';
 
 export function Cart() {
   const { t, locale } = useI18n();
@@ -32,13 +34,23 @@ export function Cart() {
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
-  const couponDiscount = appliedCoupon ? applyCouponToTotal(appliedCoupon, subtotal).discountAmount : 0;
+  const rawCouponDiscount = appliedCoupon ? applyCouponToTotal(appliedCoupon, subtotal).discountAmount : 0;
+  /**
+   * Combo por cantidad (6-oct): 3.º −25% · 4.º −50% · 7.º gratis. «Las ofertas no
+   * se combinan»: si además hay cupón se aplica SOLO el que más ahorra.
+   */
+  const bundle = computeBundle(cart, products);
+  const bundleWins = bundle.discount > 0 && bundle.discount >= rawCouponDiscount;
+  const bundleDiscount = bundleWins ? bundle.discount : 0;
+  const couponDiscount = bundleWins ? 0 : rawCouponDiscount;
+  /** Cupón que de verdad se usa en el pedido (no se gasta si ganó el combo). */
+  const usedCoupon = couponDiscount > 0 ? appliedCoupon : null;
   /** Shipping method picked by the customer at checkout. Standard is the default.
    *  'pickup' = the customer comes to pick up the products in person (no shipping cost). */
   const [shippingMethod, setShippingMethod] = useState<'standard' | 'express' | 'pickup'>('standard');
   /** Admin-configurable threshold above which Standard shipping is free. 0 = disabled. */
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(0);
-  const subtotalAfterCoupon = Math.max(0, subtotal - couponDiscount);
+  const subtotalAfterCoupon = Math.max(0, subtotal - couponDiscount - bundleDiscount);
   /** Standard shipping is FREE when the subtotal-after-coupon exceeds the configured threshold. */
   const freeShipApplies = freeShippingThreshold > 0 && subtotalAfterCoupon >= freeShippingThreshold;
   const shippingCost = shippingMethod === 'pickup' ? 0 : shippingMethod === 'express' ? 40 : (freeShipApplies ? 0 : 12);
@@ -53,9 +65,22 @@ export function Cart() {
       const name = getLocalizedProduct(item.product, locale).name;
       if (stock <= 0) return { id: item.product.id, name, stock, kind: 'out' as const };
       if (item.quantity > stock) return { id: item.product.id, name, stock, kind: 'over' as const };
+      // Compra mínima (p. ej. 2 paquetes al por mayor).
+      if (item.quantity < minQtyOf(live)) return { id: item.product.id, name, stock: minQtyOf(live), kind: 'min' as const };
       return null;
     })
-    .filter((x): x is { id: string; name: string; stock: number; kind: 'out' | 'over' } => x !== null);
+    .filter((x): x is { id: string; name: string; stock: number; kind: 'out' | 'over' | 'min' } => x !== null);
+
+  // Carritos guardados de antes con menos de la compra mínima: se suben solos al
+  // mínimo (si hay stock); si no alcanza, queda el aviso y no deja pagar.
+  useEffect(() => {
+    for (const item of cart) {
+      const live = products.find((p) => p.id === item.product.id);
+      if (!live) continue;
+      const min = minQtyOf(live);
+      if (item.quantity < min && (Number(live.stock) || 0) >= min) updateQuantity(item.product.id, min);
+    }
+  }, [cart, products, updateQuantity]);
   const hasStockIssue = stockIssues.length > 0;
 
   const handleApplyCoupon = async () => {
@@ -211,10 +236,14 @@ export function Cart() {
       (acc, ci) => acc + getEffectivePrice(ci.product).finalPrice * ci.quantity,
       0,
     );
-    const freshCouponDiscount = appliedCoupon
+    const freshRawCoupon = appliedCoupon
       ? applyCouponToTotal(appliedCoupon, freshSubtotal).discountAmount
       : 0;
-    const freshSubAfterCoupon = Math.max(0, freshSubtotal - freshCouponDiscount);
+    const freshBundle = computeBundle(cart, products);
+    const freshBundleWins = freshBundle.discount > 0 && freshBundle.discount >= freshRawCoupon;
+    const freshBundleDiscount = freshBundleWins ? freshBundle.discount : 0;
+    const freshCouponDiscount = freshBundleWins ? 0 : freshRawCoupon;
+    const freshSubAfterCoupon = Math.max(0, freshSubtotal - freshCouponDiscount - freshBundleDiscount);
     const freshFreeShip = freeShippingThreshold > 0 && freshSubAfterCoupon >= freeShippingThreshold;
     const freshShippingCost = shippingMethod === 'pickup' ? 0 : shippingMethod === 'express' ? 40 : (freshFreeShip ? 0 : 12);
     const freshTotal = freshSubAfterCoupon + freshShippingCost;
@@ -263,8 +292,10 @@ export function Cart() {
         };
       }),
       subtotal: freshSubtotal,
-      couponCode: appliedCoupon?.code || null,
+      couponCode: freshCouponDiscount > 0 ? appliedCoupon?.code || null : null,
       couponDiscount: freshCouponDiscount,
+      bundleDiscount: freshBundleDiscount,
+      bundleOffer: freshBundleWins && freshBundle.tier ? `${freshBundle.tier.units}:${freshBundle.tier.percent}` : null,
       shippingMethod,
       shippingCost: freshShippingCost,
       shippingEta: shippingMethod === 'pickup' ? 'pickup' : shippingMethod === 'express' ? '24-48h' : '1-3 days',
@@ -307,7 +338,7 @@ export function Cart() {
   /** Common post-order-creation cleanup. */
   const finishOrder = (orderId: string) => {
     setPlacedOrderId(orderId);
-    if (appliedCoupon) { void incrementCouponUsage(appliedCoupon.id); }
+    if (usedCoupon) { void incrementCouponUsage(usedCoupon.id); }
     if (sharedFrom?.shareId) { void markSharedCartUsed(sharedFrom.shareId, orderId); }
     clearCart();
     try { window.localStorage.removeItem(CHECKOUT_DRAFT_KEY); } catch { /* ignore */ }
@@ -338,6 +369,15 @@ export function Cart() {
         const msg = es
           ? `Solo quedan ${stock} de "${name}". Ajusta la cantidad.`
           : `Only ${stock} of "${name}" left. Adjust the quantity.`;
+        showToast(msg);
+        return msg;
+      }
+      const min = minQtyOf(live);
+      if (item.quantity < min) {
+        const name = getLocalizedProduct(item.product, locale).name;
+        const msg = es
+          ? `La compra mínima de "${name}" es de ${min} unidades.`
+          : `The minimum order for "${name}" is ${min} units.`;
         showToast(msg);
         return msg;
       }
@@ -459,8 +499,10 @@ export function Cart() {
           };
         }),
         subtotal,
-        couponCode: appliedCoupon?.code || null,
+        couponCode: usedCoupon?.code || null,
         couponDiscount: couponDiscount || 0,
+        bundleDiscount: bundleDiscount || 0,
+        bundleOffer: bundleWins && bundle.tier ? `${bundle.tier.units}:${bundle.tier.percent}` : null,
         shippingMethod,
         shippingCost,
         shippingEta: shippingMethod === 'pickup' ? 'pickup' : shippingMethod === 'express' ? '24-48h' : '1-3 days',
@@ -477,7 +519,7 @@ export function Cart() {
       const ref = await addDoc(collection(db, 'orders'), order);
       procesarPedidoNuevo(ref.id, order as unknown as Record<string, unknown>);
       setPlacedOrderId(ref.id);
-      if (appliedCoupon) { void incrementCouponUsage(appliedCoupon.id); }
+      if (usedCoupon) { void incrementCouponUsage(usedCoupon.id); }
       if (sharedFrom?.shareId) { void markSharedCartUsed(sharedFrom.shareId, ref.id); }
       clearCart();
       try { window.localStorage.removeItem(CHECKOUT_DRAFT_KEY); } catch { /* ignore */ }
@@ -707,6 +749,12 @@ export function Cart() {
                     {es ? 'Cupón' : 'Coupon'} {appliedCoupon ? `(${appliedCoupon.code})` : ''}
                   </span>
                   <span className="text-emerald-400 font-semibold">−${couponDiscount.toFixed(2)}</span>
+                </div>
+              )}
+              {bundleDiscount > 0 && bundle.tier && (
+                <div className="flex items-center justify-between text-sm" data-bundle-line>
+                  <span className="text-emerald-400">{bundleTierLabel(bundle.tier, locale)}</span>
+                  <span className="text-emerald-400 font-semibold">−${bundleDiscount.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex items-center justify-between text-sm">
@@ -1006,7 +1054,9 @@ export function Cart() {
                       <li key={s.id}>
                         {s.kind === 'out'
                           ? (locale === 'es' ? `"${s.name}" está agotado` : `"${s.name}" is out of stock`)
-                          : (locale === 'es' ? `"${s.name}": solo quedan ${s.stock}` : `"${s.name}": only ${s.stock} left`)}
+                          : s.kind === 'min'
+                            ? (locale === 'es' ? `"${s.name}": compra mínima ${s.stock} unidades` : `"${s.name}": minimum order ${s.stock} units`)
+                            : (locale === 'es' ? `"${s.name}": solo quedan ${s.stock}` : `"${s.name}": only ${s.stock} left`)}
                       </li>
                     ))}
                   </ul>
@@ -1027,7 +1077,7 @@ export function Cart() {
                         unitPrice: ep.finalPrice,
                       };
                     })}
-                    couponCode={appliedCoupon?.code || null}
+                    couponCode={usedCoupon?.code || null}
                     claimedTotal={total}
                     shippingCost={shippingCost}
                     customerEmail={checkoutData.email}
@@ -1174,7 +1224,7 @@ export function Cart() {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px] text-brand-400 font-bold tracking-[0.2em] uppercase">
-                    ILLIUM · {item.product.category}
+                    ILLIUM · {productCategoryLabel(products.find((p) => p.id === item.product.id) || item.product, locale)}
                     {ie.hasDiscount && (
                       <span className="ml-2 inline-flex items-center rounded-full bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 text-[9px] font-bold ring-1 ring-emerald-500/30">
                         -{ie.percentOff}%
@@ -1202,8 +1252,10 @@ export function Cart() {
                   <div className="flex items-center rounded-full bg-slate-950/60 border border-slate-700 overflow-hidden">
                     <button
                       type="button"
-                      onClick={() => updateQuantity(item.product.id, Math.max(1, item.quantity - 1))}
-                      className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                      onClick={() => updateQuantity(item.product.id, Math.max(minQtyOf(products.find((p) => p.id === item.product.id) || item.product), item.quantity - 1))}
+                      disabled={item.quantity <= minQtyOf(products.find((p) => p.id === item.product.id) || item.product)}
+                      aria-label={locale === 'es' ? 'Quitar uno' : 'Remove one'}
+                      className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
                     >
                       <Minus className="w-3 h-3" />
                     </button>
@@ -1216,6 +1268,13 @@ export function Cart() {
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>
+                  {minQtyOf(products.find((p) => p.id === item.product.id) || item.product) > 1 && (
+                    <span className="text-[10px] font-semibold text-slate-400">
+                      {locale === 'es'
+                        ? `Mín. ${minQtyOf(products.find((p) => p.id === item.product.id) || item.product)}`
+                        : `Min. ${minQtyOf(products.find((p) => p.id === item.product.id) || item.product)}`}
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => removeFromCart(item.product.id)}
@@ -1255,7 +1314,25 @@ export function Cart() {
                         <Tag className="h-3.5 w-3.5" />
                         {locale === 'es' ? 'Cupón' : 'Coupon'} <span className="font-mono font-bold">{appliedCoupon.code}</span>
                       </span>
-                      <span className="font-semibold">-${couponDiscount.toFixed(2)}</span>
+                      <span className="font-semibold">{couponDiscount > 0 ? `-$${couponDiscount.toFixed(2)}` : (locale === 'es' ? 'no se combina' : 'not combined')}</span>
+                    </div>
+                  )}
+                  {bundleDiscount > 0 && bundle.tier && (
+                    <div className="flex justify-between text-emerald-400" data-bundle-line>
+                      <span>{bundleTierLabel(bundle.tier, locale)}</span>
+                      <span className="font-semibold">-${bundleDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {appliedCoupon && bundleWins && (
+                    <p className="text-[11px] text-slate-400 leading-snug">
+                      {locale === 'es'
+                        ? 'Las ofertas no son acumulables: se aplicó el combo porque te ahorra más que el cupón.'
+                        : 'Offers cannot be combined: the bundle was applied because it saves you more than the coupon.'}
+                    </p>
+                  )}
+                  {bundle.next && bundle.eligibleUnits > 0 && (
+                    <div className="rounded-xl border border-brand-500/30 bg-brand-500/10 px-3 py-2 text-xs font-semibold text-brand-200" data-bundle-hint>
+                      🔥 {bundleNextHint(bundle.next, locale)}
                     </div>
                   )}
                   <div className="flex justify-between text-slate-400">

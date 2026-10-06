@@ -55,6 +55,16 @@ export function normalizeProductFromFirestore(id: string, raw: Record<string, un
       const u = raw.coaUrl != null ? String(raw.coaUrl).trim() : '';
       return u && !isDeadStorageUrl(u) ? u : undefined;
     })(),
+    // Compra mínima (6-oct). Si el producto no la tiene guardada: los paquetes al
+    // por mayor arrancan en 2 (pedido del cliente) y el resto sin mínimo. Un valor
+    // guardado desde Admin → Productos (incluido 1) siempre manda.
+    minQty: (() => {
+      if (raw.minQty == null || raw.minQty === '') {
+        return String(raw.category ?? '').trim().toLowerCase() === 'wholesale' ? 2 : undefined;
+      }
+      const n = Math.floor(Number(raw.minQty) || 0);
+      return n > 1 ? n : undefined;
+    })(),
   };
 }
 

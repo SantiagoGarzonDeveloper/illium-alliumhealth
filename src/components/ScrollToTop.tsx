@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 
 /**
@@ -9,8 +9,12 @@ import { useLocation } from 'react-router-dom';
  * scrolled to the footer.
  */
 export function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
+  const lastPath = useRef<string | null>(null);
   useEffect(() => {
+    const pathChanged = lastPath.current !== pathname;
+    lastPath.current = pathname;
+    if (!pathChanged) return; // solo cambió el #ancla: el navegador ya hace el salto
     // Disable smooth scroll for the jump itself so it lands instantly at top
     // (smooth would animate from the deep position the user clicked from).
     const html = document.documentElement;
@@ -18,6 +22,18 @@ export function ScrollToTop() {
     html.style.scrollBehavior = 'auto';
     window.scrollTo(0, 0);
     html.style.scrollBehavior = previous;
-  }, [pathname]);
+    // Enlaces con ancla (p. ej. «/#bundle» desde la ficha): se baja a la sección
+    // cuando ya se pintó (la portada carga el catálogo después).
+    if (!hash || hash.length < 2) return;
+    let tries = 0;
+    const id = window.setInterval(() => {
+      const el = document.getElementById(decodeURIComponent(hash.slice(1)));
+      if (el || ++tries > 20) {
+        window.clearInterval(id);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 150);
+    return () => window.clearInterval(id);
+  }, [pathname, hash]);
   return null;
 }

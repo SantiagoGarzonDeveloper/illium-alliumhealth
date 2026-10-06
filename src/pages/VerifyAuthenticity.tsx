@@ -265,7 +265,7 @@ export function VerifyAuthenticity() {
                 <div className="flex items-center justify-between px-5 py-3">
                   <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">{es ? 'Fecha de análisis' : 'Analysis date'}</span>
                   <span className="text-sm font-semibold text-slate-900">
-                    {new Date(data.analysisDate).toLocaleDateString(es ? 'es-CO' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    {new Date(data.analysisDate).toLocaleDateString(es ? 'es-CO' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })}
                   </span>
                 </div>
               )}

@@ -113,6 +113,8 @@ export function AdminProducts() {
         protocol: currentProduct.protocol ?? '',
         monthsSupplyPerVial: Number(currentProduct.monthsSupplyPerVial) || 1,
         coaUrl: (currentProduct.coaUrl || '').trim(),
+        // Compra mínima (6-oct): 1 = sin mínimo.
+        minQty: Math.max(1, Math.floor(Number(currentProduct.minQty) || 1)),
       };
       if (hasDiscount) {
         payload.discountType = dType;
@@ -208,7 +210,14 @@ export function AdminProducts() {
             <FieldLabel htmlFor="product-category">{t('adminPage.products.category')}</FieldLabel>
             <Combobox
               value={currentProduct.category || ''}
-              onChange={(v) => setCurrentProduct({ ...currentProduct, category: v })}
+              onChange={(v) =>
+                setCurrentProduct({
+                  ...currentProduct,
+                  category: v,
+                  // Paquete al por mayor nuevo → compra mínima 2 (se puede cambiar abajo).
+                  ...(v === WHOLESALE_CATEGORY && (Number(currentProduct.minQty) || 1) <= 1 ? { minQty: 2 } : {}),
+                })
+              }
               // 29-sep: solo dos categorías (pedido del cliente).
               options={[
                 {
@@ -272,6 +281,29 @@ export function AdminProducts() {
                 required
               />
             </div>
+          </div>
+
+          {/* Compra mínima (pedido del cliente, 6-oct: p. ej. 2 paquetes al por mayor) */}
+          <div className="rounded-lg border border-brand-200 bg-brand-50/50 p-4" data-admin-min-qty>
+            <FieldLabel htmlFor="product-min-qty">
+              {locale === 'es' ? 'Compra mínima (unidades o paquetes)' : 'Minimum order (units or packs)'}
+            </FieldLabel>
+            <Input
+              id="product-min-qty"
+              type="number"
+              step={1}
+              min={1}
+              className="max-w-[10rem]"
+              value={currentProduct.minQty ?? 1}
+              onChange={(e) =>
+                setCurrentProduct({ ...currentProduct, minQty: Math.max(1, parseInt(e.target.value, 10) || 1) })
+              }
+            />
+            <FieldHint>
+              {locale === 'es'
+                ? 'El cliente no puede comprar menos de esta cantidad (la ficha arranca en este número y el carrito no deja bajar de aquí). Deja 1 para no poner mínimo.'
+                : 'Customers cannot buy fewer than this (the product page starts at this number and the cart will not go below it). Leave 1 for no minimum.'}
+            </FieldHint>
           </div>
 
           <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-4">

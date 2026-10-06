@@ -4,12 +4,17 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { Download, FileText, Loader2, XCircle, CheckCircle2, FlaskConical } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nContext';
+import { useAppStore } from '@/store';
+import { isPdfUrl, resolveProductCoa } from '@/lib/coa';
+import { isDeadStorageUrl } from '@/lib/uploadMedia';
+import { CoaFullscreen } from '@/components/coa/CoaViewer';
 
 interface CoaData {
   productName: string;
   lot: string;
   purity: string;
   coaUrl: string | null;
+  productId: string | null;
   analysisDate: string | null;
   labName: string | null;
   methods: string | null;
@@ -24,6 +29,8 @@ export function CoaBatch() {
   const es = locale === 'es';
   const [phase, setPhase] = useState<Phase>('loading');
   const [data, setData] = useState<CoaData | null>(null);
+  const [full, setFull] = useState(false);
+  const products = useAppStore((s) => s.products);
 
   useEffect(() => {
     (async () => {
@@ -37,7 +44,9 @@ export function CoaBatch() {
           productName: String(first.productName || '—'),
           lot: String(first.lot || batch),
           purity: String(first.purity || '—'),
-          coaUrl: (first.coaUrl as string) || null,
+          // Las URLs viejas de Firebase Storage ya no cargan (402).
+          coaUrl: typeof first.coaUrl === 'string' && first.coaUrl && !isDeadStorageUrl(first.coaUrl) ? first.coaUrl : null,
+          productId: (first.productId as string) || null,
           analysisDate: (first.analysisDate as string) || null,
           labName: (first.labName as string) || null,
           methods: (first.methods as string) || null,
@@ -81,9 +90,18 @@ export function CoaBatch() {
 
   if (!data) return null;
 
+  // Si el lote no tiene archivo propio, se usa el COA subido al producto
+  // (Admin → Productos), el mismo que se ve en la ficha.
+  const liveProduct = data.productId ? products.find((p) => p.id === data.productId) : undefined;
+  const coaFile = data.coaUrl || (liveProduct ? resolveProductCoa(liveProduct, products) : undefined) || null;
+  const coaIsPdf = coaFile ? isPdfUrl(coaFile) : false;
+
   const displayDate = data.analysisDate
     ? new Date(data.analysisDate).toLocaleDateString(es ? 'es-CO' : 'en-US', {
         year: 'numeric', month: 'long', day: 'numeric',
+        // La fecha se guarda como «AAAA-MM-DD» (medianoche UTC): sin esto, en
+        // EE.UU. salía un día antes.
+        timeZone: 'UTC',
       })
     : '—';
 
@@ -166,10 +184,31 @@ export function CoaBatch() {
           </dl>
         </div>
 
+        {/* El certificado del laboratorio, a la vista (como en los COA de referencia) */}
+        {coaFile && !coaIsPdf && (
+          <button
+            type="button"
+            onClick={() => setFull(true)}
+            className="block w-full mb-6 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm"
+            aria-label={es ? 'Ver certificado en grande' : 'View certificate full size'}
+            data-coa-image
+          >
+            <img src={coaFile} alt={`${data.productName} COA`} className="w-full h-auto" />
+            <span className="block py-2 text-xs font-semibold text-emerald-700">
+              {es ? 'Toca para ampliar' : 'Tap to enlarge'}
+            </span>
+          </button>
+        )}
+        {coaFile && coaIsPdf && (
+          <div className="hidden sm:block mb-6 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <iframe src={`${coaFile}#view=FitH`} title={`${data.productName} COA`} className="w-full h-[640px]" />
+          </div>
+        )}
+
         {/* Download button */}
-        {data.coaUrl ? (
+        {coaFile ? (
           <a
-            href={data.coaUrl}
+            href={coaFile}
             target="_blank"
             rel="noopener noreferrer"
             download
@@ -177,7 +216,9 @@ export function CoaBatch() {
           >
             <span className="inline-flex items-center gap-2">
               <Download className="w-4 h-4" />
-              {es ? 'Descargar COA en PDF' : 'Download COA as PDF'}
+              {coaIsPdf
+                ? (es ? 'Descargar COA en PDF' : 'Download COA as PDF')
+                : (es ? 'Descargar COA' : 'Download COA')}
             </span>
           </a>
         ) : (
@@ -185,6 +226,9 @@ export function CoaBatch() {
             <FileText className="w-4 h-4 inline-block mr-2" />
             {es ? 'PDF no disponible' : 'PDF not available'}
           </div>
+        )}
+        {full && coaFile && (
+          <CoaFullscreen url={coaFile} productName={data.productName} locale={locale} onClose={() => setFull(false)} />
         )}
 
         {/* Footer */}

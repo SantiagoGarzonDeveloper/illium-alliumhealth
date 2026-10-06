@@ -30,6 +30,8 @@ export interface Product {
   monthsSupplyPerVial?: number;
   /** Certificate of Analysis (imagen o PDF) subido desde Admin → Productos (vía subir.php). */
   coaUrl?: string;
+  /** Compra mínima (unidades/paquetes) que debe llevar el cliente. Vacío o 1 = sin mínimo. */
+  minQty?: number;
 }
 
 export interface CartItem {

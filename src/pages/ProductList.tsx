@@ -9,6 +9,7 @@ import { ArrowRight } from 'lucide-react';
 import { CategoryChips } from '@/components/shop/CategoryChips';
 import { filterByShopFilter, productCategoryLabel, shopFilterFromParam, shopFilterLabel, type ShopFilter } from '@/lib/catalogCategories';
 import { displayImage } from '@/lib/productImage';
+import { minQtyOf } from '@/lib/bundleOffer';
 
 export function ProductList() {
   const { t, locale } = useI18n();
@@ -75,8 +76,10 @@ export function ProductList() {
             const catLabel = productCategoryLabel(product, locale);
             const eff = getEffectivePrice(product);
             return (
-              <Link key={`${group.category}-${group.baseName}`} to={`/product/${product.id}`} className="group block">
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-black p-3 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-600/25">
+              <Link key={`${group.category}-${group.baseName}`} to={`/product/${product.id}`} className="group block h-full">
+                {/* Todas las tarjetas miden lo mismo (pedido del cliente, 6-oct): columna
+                    flexible, fila de presentaciones con alto fijo y precio siempre abajo. */}
+                <div className="relative flex h-full flex-col overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-black p-3 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-600/25">
                   {/* Image */}
                   <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-gradient-to-b from-slate-800/50 to-black">
                     <img
@@ -92,26 +95,32 @@ export function ProductList() {
                     )}
                   </div>
                   {/* Info */}
-                  <div className="px-3 pt-5 pb-3">
+                  <div className="flex flex-1 flex-col px-3 pt-5 pb-3">
                     <div className="text-[10px] text-brand-400 mb-2 font-bold tracking-[0.2em] uppercase">
                       ILLIUM · {catLabel}
                     </div>
                     <h3 className="font-bold text-white mb-2 line-clamp-1 text-lg tracking-tight">
                       {hasMultipleVariants ? group.baseName : lp.name}
                     </h3>
-                    {hasMultipleVariants && (
-                      <div className="flex flex-wrap gap-1.5 mb-3">
-                        {group.variants.map((v) => (
-                          <span key={v.product.id} className="inline-flex items-center rounded-full bg-brand-500/15 text-brand-300 text-[10px] font-bold tracking-wider px-2 py-0.5 ring-1 ring-brand-400/30">
+                    {/* Fila de alto fijo: presentaciones o compra mínima (o vacía). */}
+                    <div className="mb-3 flex h-6 items-center gap-1.5 overflow-hidden whitespace-nowrap">
+                      {hasMultipleVariants &&
+                        group.variants.map((v) => (
+                          <span key={v.product.id} className="inline-flex shrink-0 items-center rounded-full bg-brand-500/15 text-brand-300 text-[10px] font-bold tracking-wider px-2 py-0.5 ring-1 ring-brand-400/30">
                             {v.label}
                           </span>
                         ))}
-                        <span className="text-[10px] text-slate-500 self-center font-semibold">
+                      {hasMultipleVariants ? (
+                        <span className="truncate text-[10px] text-slate-500 font-semibold">
                           {locale === 'es' ? `${group.variants.length} presentaciones` : `${group.variants.length} sizes`}
                         </span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
+                      ) : minQtyOf(product) > 1 ? (
+                        <span className="truncate text-[10px] text-slate-400 font-semibold">
+                          {locale === 'es' ? `Compra mínima: ${minQtyOf(product)}` : `Minimum order: ${minQtyOf(product)}`}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-auto flex items-center justify-between">
                       <div className="flex items-baseline gap-2">
                         <span className="font-bold text-xl text-white">${eff.finalPrice.toFixed(0)}</span>
                         {eff.hasDiscount && (

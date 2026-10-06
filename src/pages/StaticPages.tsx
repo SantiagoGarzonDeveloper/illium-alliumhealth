@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { resolveProductCoa } from '@/lib/coa';
 import { Link } from 'react-router-dom';
 import { useI18n } from '@/i18n/I18nContext';
 import { Button } from '@/components/ui/button';
@@ -560,14 +561,16 @@ export function LabResultsPage() {
   const es = locale === 'es';
   const products = useAppStore((s) => s.products);
   const [viewer, setViewer] = useState<{ url: string; name: string } | null>(null);
+  // 6-oct: la caja al por mayor usa el COA de su frasco individual (y viceversa).
+  const coaOf = (p: (typeof products)[number]) => resolveProductCoa(p, products);
   const sorted = [...products].sort((a, b) => {
     const w = Number(isWholesale(a)) - Number(isWholesale(b));
     if (w !== 0) return w;
-    const c = Number(!a.coaUrl) - Number(!b.coaUrl);
+    const c = Number(!coaOf(a)) - Number(!coaOf(b));
     if (c !== 0) return c;
     return a.name.trim().localeCompare(b.name.trim());
   });
-  const withCoa = products.filter((p) => p.coaUrl).length;
+  const withCoa = products.filter((p) => coaOf(p)).length;
   return (
     <PageShell
       title={es ? 'Certificados de Análisis' : 'Certificates of Analysis'}
@@ -587,10 +590,11 @@ export function LabResultsPage() {
         ) : (
           sorted.map((p) => {
             const { name } = getLocalizedProduct(p, locale);
+            const coa = coaOf(p);
             return (
               <div
                 key={p.id}
-                data-coa-card={p.coaUrl ? 'available' : 'on-request'}
+                data-coa-card={coa ? 'available' : 'on-request'}
                 className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
               >
                 <div className="flex items-start gap-3">
@@ -603,10 +607,10 @@ export function LabResultsPage() {
                       {es ? 'Pureza' : 'Purity'}: 99%+ · {es ? 'Método' : 'Method'}: HPLC + MS
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-                      {p.coaUrl ? (
+                      {coa ? (
                         <button
                           type="button"
-                          onClick={() => setViewer({ url: p.coaUrl as string, name })}
+                          onClick={() => setViewer({ url: coa, name })}
                           className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 hover:bg-brand-500 px-3.5 py-1.5 text-xs font-bold text-white transition-colors"
                         >
                           <FileText className="h-3.5 w-3.5" /> {es ? 'Ver COA' : 'View COA'}

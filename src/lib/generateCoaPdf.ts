@@ -22,7 +22,7 @@ function accession(lot: string) {
 function dateStr(iso?: string) {
   if (!iso) return new Date().toLocaleDateString('en-US');
   const d = new Date(iso);
-  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US');
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { timeZone: 'UTC' });
 }
 
 /**

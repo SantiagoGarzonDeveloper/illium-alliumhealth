@@ -13,6 +13,7 @@ import { getEffectivePrice } from '@/lib/pricing';
 import { CategoryChips } from '@/components/shop/CategoryChips';
 import { filterByShopFilter, productCategoryLabel, shopFilterFromParam, shopFilterLabel, type ShopFilter } from '@/lib/catalogCategories';
 import { displayImage } from '@/lib/productImage';
+import { minQtyOf } from '@/lib/bundleOffer';
 
 type HomeCategory = {
   name: string;
@@ -97,6 +98,23 @@ export function Home() {
   const [freeShipMin, setFreeShipMin] = useState(300);
   const [, setCategoriesSectionTitle] = useState(() => t('home.defaultCategoriesSection'));
   const [categories, setCategories] = useState<HomeCategory[]>(DEFAULT_CATEGORIES);
+
+  /**
+   * Foto de cada categoría (6-oct): el cliente cambió las fotos de todos los
+   * productos y las categorías seguían con las fotos viejas fijas. Ahora, salvo
+   * que en Ajustes se suba una imagen propia, la tarjeta usa la foto ACTUAL de un
+   * producto de esa categoría (BPC-157 + TB-500 para «todos», GLOW para mayoristas).
+   */
+  const categoryImage = (cat: HomeCategory): string | undefined => {
+    const custom = (cat.imageUrl || '').trim();
+    const isLegacy = !custom || /\/(product|category)-images\//.test(custom);
+    if (!isLegacy) return custom;
+    const wholesale = (categorySlugFromPath(cat.path)?.toLowerCase() || '') === 'wholesale';
+    const pool = filterByShopFilter(products, wholesale ? 'wholesale' : 'all').filter((p) => (Number(p.stock) || 0) > 0);
+    const preferred = wholesale ? /^glow\b/i : /^bpc-157\s*\+\s*tb-500\s*10\s*mg/i;
+    const pick = pool.find((p) => preferred.test(p.name.trim())) || pool[0];
+    return pick ? displayImage(pick, products) : custom || undefined;
+  };
 
   useEffect(() => {
     setHeroTitle(t('home.defaultHeroTitle'));
@@ -363,10 +381,10 @@ export function Home() {
                     const tone = tones[slug] || tones.peptides;
                     return (
                       <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${tone.grad} aspect-[3/4] cursor-pointer transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl ${tone.glow}`}>
-                    {cat.imageUrl ? (
+                    {categoryImage(cat) ? (
                       <>
                         <img
-                          src={cat.imageUrl}
+                          src={categoryImage(cat)}
                           alt={cat.name}
                           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
@@ -457,8 +475,8 @@ export function Home() {
                 const eff = getEffectivePrice(product);
                 const outOfStock = (product.stock ?? 0) <= 0;
                 return (
-                  <Link key={product.id} to={`/product/${product.id}`} className="group block">
-                    <div className="relative h-full overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-brand-300">
+                  <Link key={product.id} to={`/product/${product.id}`} className="group block h-full">
+                    <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-brand-300">
                       <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-slate-900 to-black">
                         <img
                           src={displayImage(product, products)}
@@ -478,14 +496,17 @@ export function Home() {
                           </span>
                         )}
                       </div>
-                      <div className="p-4">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-700 mb-1.5">
+                      <div className="flex flex-1 flex-col p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-700 mb-1.5 truncate">
                           {productCategoryLabel(product, locale)}
+                          {minQtyOf(product) > 1 && (
+                            <span className="text-slate-400"> · {locale === 'es' ? `mín. ${minQtyOf(product)}` : `min. ${minQtyOf(product)}`}</span>
+                          )}
                         </p>
                         <h3 className="font-bold text-slate-900 text-sm leading-snug mb-2 line-clamp-2 min-h-[2.5rem]">
                           {lp.name}
                         </h3>
-                        <div className="flex items-baseline gap-2">
+                        <div className="mt-auto flex items-baseline gap-2">
                           <span className="font-black text-lg text-slate-900">${eff.finalPrice.toFixed(0)}</span>
                           {eff.hasDiscount && (
                             <span className="text-xs text-slate-400 line-through">${eff.originalPrice.toFixed(0)}</span>
@@ -656,83 +677,88 @@ export function Home() {
         </div>
       </section>
 
-      {/* Bundles — combos de alto valor */}
-      <section className="py-20 bg-gradient-to-b from-slate-50 to-white">
+      {/* Combo por cantidad — «BUILD YOUR ULTIMATE RESEARCH BUNDLE» (pedido del cliente, 6-oct).
+          Reemplaza los «Stacks completos». El descuento se aplica solo en el carrito
+          (src/lib/bundleOffer.ts). Las tres tarjetas miden lo mismo. */}
+      <section id="bundle" className="py-20 bg-gradient-to-b from-slate-50 to-white scroll-mt-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <p className="text-xs font-bold uppercase tracking-[0.3em] text-brand-700 mb-3">
               {locale === 'es' ? 'Combos' : 'Bundles'}
             </p>
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3 tracking-tight">
-              {locale === 'es' ? 'Stacks completos · Ahorra hasta 25%' : 'Complete stacks · Save up to 25%'}
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-3 tracking-tight uppercase">
+              🔥 {locale === 'es' ? 'Arma tu paquete de investigación definitivo' : 'Build your ultimate research bundle'} 🔥
             </h2>
+            <p className="text-base md:text-lg font-semibold text-slate-600">
+              {locale === 'es' ? 'Mientras más llevas, más ahorras' : 'The More You Get, The More You Save'}
+            </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch">
             {[
               {
-                key: 'glp',
-                title: locale === 'es' ? 'Stack GLP de investigación' : 'GLP Research Stack',
-                sub: locale === 'es' ? 'Incluye compuestos de la línea GLP: GLP2-T, GLP3-R, MOTS-C y 5-Amino-1MQ · Viales con COA por lote' : 'Includes GLP-line compounds: GLP2-T, GLP3-R, MOTS-C & 5-Amino-1MQ · Vials with per-batch COA',
-                orig: 397,
-                price: 299,
-                ctaCat: 'metabolic',
-                color: 'from-red-500 to-orange-600',
-                icon: '🧪',
+                key: 'buy2',
+                big: '25%',
+                bigSub: locale === 'es' ? 'DE DESCUENTO' : 'OFF',
+                title: locale === 'es' ? 'Compra 2 — desbloquea 25% de descuento en tu 3.º' : 'Buy 2 — Unlock 25% off your 3rd',
+                sub: locale === 'es'
+                  ? 'Agrega 2 péptidos a tu carrito y obtén tu 3.er péptido con 25% de descuento.'
+                  : 'Add 2 peptides to your cart and get your 3rd peptide 25% OFF.',
+                tag: locale === 'es' ? 'Inicio fácil. Ahorro inmediato.' : 'Easy start. Instant savings.',
+                badge: '',
               },
               {
-                key: 'analogs',
-                title: locale === 'es' ? 'Stack de análogos peptídicos' : 'Peptide Analog Stack',
-                sub: locale === 'es' ? 'Incluye Tesamorelin, CJC-1295, Ipamorelin y Sermorelin · Viales con COA por lote' : 'Includes Tesamorelin, CJC-1295, Ipamorelin & Sermorelin · Vials with per-batch COA',
-                orig: 427,
-                price: 319,
-                ctaCat: 'metabolic',
-                color: 'from-brand-500 to-brand-800',
-                icon: '⚗️',
-                badge: locale === 'es' ? 'MÁS POPULAR' : 'MOST POPULAR',
+                key: 'buy3',
+                big: '50%',
+                bigSub: locale === 'es' ? 'DE DESCUENTO' : 'OFF',
+                title: locale === 'es' ? 'Compra 3 — desbloquea 50% de descuento en tu 4.º' : 'Buy 3 — Unlock 50% off your 4th',
+                sub: locale === 'es'
+                  ? 'Compra 3 péptidos y obtén tu 4.º péptido con 50% de descuento.'
+                  : 'Purchase 3 peptides and get your 4th peptide 50% OFF.',
+                tag: locale === 'es' ? 'La más popular.' : 'Most popular.',
+                badge: locale === 'es' ? 'Más popular' : 'Most popular',
               },
               {
-                key: 'bpc',
-                title: locale === 'es' ? 'Stack BPC · TB · GHK' : 'BPC · TB · GHK Stack',
-                sub: locale === 'es' ? 'Incluye BPC-157, TB-500 y GHK-Cu · Viales con COA por lote' : 'Includes BPC-157, TB-500 & GHK-Cu · Vials with per-batch COA',
-                orig: 277,
-                price: 209,
-                ctaCat: 'recovery',
-                color: 'from-blue-500 to-cyan-600',
-                icon: '🔬',
+                key: 'buy6',
+                big: locale === 'es' ? 'GRATIS' : 'FREE',
+                bigSub: locale === 'es' ? 'EL 7.º PÉPTIDO' : '7TH PEPTIDE',
+                title: locale === 'es' ? 'Compra 6 — llévate tu 7.º péptido GRATIS' : 'Buy 6 — Claim your 7th peptide FREE',
+                sub: locale === 'es'
+                  ? 'Ve por todo con 6 péptidos y elige un 7.º péptido totalmente GRATIS.*'
+                  : 'Go all in with 6 peptides and choose a 7th peptide absolutely FREE.*',
+                tag: locale === 'es' ? 'El paquete definitivo. Máximo valor.' : 'The ultimate bundle. Maximum value.',
+                badge: locale === 'es' ? 'Mejor valor' : 'Best value',
               },
             ].map((b) => (
-              <Link key={b.key} to="/shop" data-cta={b.ctaCat} className="group block">
-                {/* Extra wrapper adds top padding so the absolute badge has space (no more clipping) */}
-                <div className={`relative ${b.badge ? 'pt-5' : ''}`}>
+              <Link key={b.key} to="/shop" data-bundle={b.key} className="group flex flex-col">
+                {/* Todas reservan el mismo espacio para la cinta, la tengan o no → mismo tamaño. */}
+                <div className="h-5 flex justify-center relative z-10">
                   {b.badge && (
-                    <div className="absolute -top-0 left-0 right-0 flex justify-center z-10">
-                      <span className="inline-flex items-center gap-1.5 px-5 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest bg-gradient-to-r from-brand-700 via-brand-500 to-brand-700 text-white shadow-xl shadow-brand-500/50 whitespace-nowrap">
-                        <span>⭐</span> {b.badge}
-                      </span>
-                    </div>
+                    <span className="translate-y-2 inline-flex h-7 items-center gap-1.5 px-5 rounded-full text-[11px] font-black uppercase tracking-widest bg-gradient-to-r from-brand-700 via-brand-500 to-brand-700 text-white shadow-xl shadow-brand-500/40 whitespace-nowrap">
+                      <span>⭐</span> {b.badge}
+                    </span>
                   )}
-                  <div className={`relative overflow-hidden rounded-3xl border-2 ${b.badge ? 'border-brand-500 ring-4 ring-brand-500/30 shadow-2xl shadow-brand-500/30 md:scale-[1.03]' : 'border-slate-200'} bg-white p-7 transition-all hover:-translate-y-2 hover:shadow-2xl`}>
-                    {b.badge && <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-b from-brand-500/5 via-transparent to-transparent" />}
-                    <div className={`h-16 w-16 rounded-2xl bg-gradient-to-br ${b.color} flex items-center justify-center text-3xl mb-5 shadow-lg`}>
-                      {b.icon}
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-1">{b.title}</h3>
-                    <p className="text-sm text-slate-500 mb-5 leading-relaxed">{b.sub}</p>
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <span className="text-4xl font-black text-slate-900">${b.price}</span>
-                      <span className="text-sm text-slate-400 line-through">${b.orig}</span>
-                    </div>
-                    <p className="text-xs font-bold text-emerald-700 mb-5">
-                      {locale === 'es' ? 'Ahorras' : 'Save'} ${b.orig - b.price}
-                    </p>
-                    <Button className={`w-full ${b.badge ? 'bg-gradient-to-r from-brand-600 to-brand-500 shadow-lg shadow-brand-600/30 hover:from-brand-500 hover:to-brand-400' : 'bg-slate-900 hover:bg-brand-700'} text-white rounded-full h-12 text-sm font-bold transition-all`}>
-                      {locale === 'es' ? 'Ver stack' : 'View stack'} <ArrowRight className="ml-1.5 h-4 w-4" />
-                    </Button>
+                </div>
+                <div className={`relative flex flex-1 flex-col overflow-hidden rounded-3xl border-2 ${b.badge ? 'border-brand-500 ring-4 ring-brand-500/20 shadow-xl shadow-brand-500/20' : 'border-slate-200'} bg-white p-7 pt-8 text-center transition-all group-hover:-translate-y-2 group-hover:shadow-2xl`}>
+                  {b.badge && <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-b from-brand-500/5 via-transparent to-transparent" />}
+                  <div className="mx-auto mb-5 flex h-28 w-28 flex-col items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-lg shadow-brand-700/30">
+                    <span className={`${b.big.length > 4 ? 'text-2xl' : 'text-4xl'} font-black leading-none`}>{b.big}</span>
+                    <span className="mt-1 text-[10px] font-bold tracking-widest">{b.bigSub}</span>
                   </div>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-slate-900 mb-2 leading-snug">{b.title}</h3>
+                  <p className="text-sm text-slate-600 mb-4 leading-relaxed">{b.sub}</p>
+                  <p className="mt-auto mb-5 text-[11px] font-black uppercase tracking-[0.18em] text-brand-700">{b.tag}</p>
+                  <Button className={`w-full ${b.badge ? 'bg-gradient-to-r from-brand-600 to-brand-500 shadow-lg shadow-brand-600/30 hover:from-brand-500 hover:to-brand-400' : 'bg-slate-900 hover:bg-brand-700'} text-white rounded-full h-12 text-sm font-bold transition-all`}>
+                    {locale === 'es' ? 'Comprar péptidos' : 'Shop peptides'} <ArrowRight className="ml-1.5 h-4 w-4" />
+                  </Button>
                 </div>
               </Link>
             ))}
           </div>
+          <p className="max-w-3xl mx-auto mt-8 text-center text-xs text-slate-500 leading-relaxed">
+            {locale === 'es'
+              ? '*El descuento se aplica al producto elegible de menor precio. Las ofertas no son acumulables. Aplica a péptidos individuales (no a los paquetes al por mayor). Solo para uso en investigación.'
+              : '*Discount applies to the lowest-priced eligible product. Offers cannot be combined. Applies to individual peptides (wholesale packs excluded). Research Use Only.'}
+          </p>
 
           {/* Ventas al por mayor (pedido del cliente, 24-sep) */}
           <div className="max-w-5xl mx-auto mt-10 rounded-3xl border-2 border-brand-200 bg-brand-50/60 p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
@@ -879,8 +905,8 @@ export function Home() {
               const reviews = 120 + idx * 37;
               const isLowStock = (product.stock ?? 100) < 30;
               return (
-              <Link key={product.id} to={`/product/${product.id}`} className="group block">
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-black p-3 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-600/25">
+              <Link key={product.id} to={`/product/${product.id}`} className="group block h-full">
+                <div className="relative flex h-full flex-col overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-black p-3 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-600/25">
                   {/* Top badges — varied per product */}
                   <div className="absolute top-5 left-5 right-5 z-20 flex justify-between items-start gap-2">
                     {(() => {
@@ -921,7 +947,7 @@ export function Home() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   </div>
                   {/* Info section */}
-                  <div className="px-3 pt-5 pb-3">
+                  <div className="flex flex-1 flex-col px-3 pt-5 pb-3">
                     <div className="text-[10px] text-brand-400 mb-2 font-bold tracking-[0.2em] uppercase">
                       ILLIUM · {productCategoryLabel(product, locale)}
                     </div>
@@ -931,7 +957,7 @@ export function Home() {
                       <span className="font-semibold text-white">{rating}</span>
                       <span>({reviews})</span>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="mt-auto flex items-center justify-between">
                       <div className="flex items-baseline gap-2">
                         <span className="font-bold text-2xl text-white">${eff.finalPrice.toFixed(0)}</span>
                         {eff.hasDiscount && (
